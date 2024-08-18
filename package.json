@@ -12,11 +12,92 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "coderank.refreshLocal",
+        "title": "Refresh local values",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "coderank.rankProgress",
+        "title": "Check rank progress"
+      },
+      {
+        "command": "coderank.displayLocalCharacterData",
+        "title": "Display local character data"
+      },
+      {
+        "command": "coderank.removeLocalCharacterDataDisplay",
+        "title": "Remove local character data display",
+        "icon": "$(close)"
+      }
+    ],
     "views": {
       "explorer": [
         {
           "id": "coderank",
           "name": "Coderank"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Coderank configuration",
+      "properties": {
+        "coderank.refreshRate": {
+          "type": "number",
+          "default": 10,
+          "description": "Refresh local values every X characters. Default is 10"
+        },
+        "coderank.favoriteCharacterRefreshRate": {
+          "type": "number",
+          "default": 100,
+          "description": "Refresh favorite character value every X characters. Overrides coderank.refreshRate for the facorite character stat. Default is 100"
+        },
+        "coderank.trackCharacters": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["local", "remote"]
+          },
+          "default": ["local", "remote"],
+          "description": "Track the values of each typed/pasted character. This stores the amount of all characters typed. Default ['local', 'remote']"
+        },
+        "coderank.saveLocally": {
+          "type": "boolean",
+          "default": true,
+          "description": "Save local values to local storage. If disabled, local values will not coordinate between different windows, and will be lost when the windows are closed"
+        },
+        "coderank.saveRemotely": {
+          "type": "boolean",
+          "default": true,
+          "description": "If disabled, remote values will not be shown in the treeview, and stats will not be pushed nor pulled to and from GitHub"
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "coderank.refreshLocal",
+          "when": "view == coderank",
+          "group": "navigation"
+        },
+        {
+          "command": "coderank.rankProgress",
+          "when": "view == coderank",
+          "group": "inline"
+        },
+        {
+          "command": "coderank.displayLocalCharacterData",
+          "when": "view == coderank",
+          "group": "inline"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "coderank.removeLocalCharacterDataDisplay",
+          "when": "view == coderank && viewItem == characterData",
+          "group": "inline"
         }
       ]
     }
