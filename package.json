@@ -21,15 +21,6 @@
       {
         "command": "coderank.rankProgress",
         "title": "Check rank progress"
-      },
-      {
-        "command": "coderank.displayLocalCharacterData",
-        "title": "Display local character data"
-      },
-      {
-        "command": "coderank.removeLocalCharacterDataDisplay",
-        "title": "Remove local character data display",
-        "icon": "$(close)"
       }
     ],
     "views": {
@@ -49,10 +40,10 @@
           "default": 10,
           "description": "Refresh local values every X characters. Default is 10"
         },
-        "coderank.favoriteCharacterRefreshRate": {
-          "type": "number",
-          "default": 100,
-          "description": "Refresh favorite character value every X characters. Overrides coderank.refreshRate for the facorite character stat. Default is 100"
+        "coderank.characterDataRefreshRate": {
+          "type:": "number",
+          "default": 1000,
+          "description": "Refresh character data every X characters."
         },
         "coderank.trackCharacters": {
           "type": "array",
@@ -86,20 +77,9 @@
           "command": "coderank.rankProgress",
           "when": "view == coderank",
           "group": "inline"
-        },
-        {
-          "command": "coderank.displayLocalCharacterData",
-          "when": "view == coderank",
-          "group": "inline"
         }
       ],
-      "view/item/context": [
-        {
-          "command": "coderank.removeLocalCharacterDataDisplay",
-          "when": "view == coderank && viewItem == characterData",
-          "group": "inline"
-        }
-      ]
+      "view/item/context": []
     }
   },
   "scripts": {

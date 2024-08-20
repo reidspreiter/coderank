@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 
-const RANK_SIZE = 100000;
+const RANK_SIZE = 25000;
 
 export function activate(context: vscode.ExtensionContext) {
 
 	let stats = getStats();
-	const charMap = getCharMap();
 	let config = getConfig();
 	const provider = new CoderankStatsProvider(config, stats);
 	vscode.window.registerTreeDataProvider("coderank", provider);
@@ -40,7 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
 			} else {
 				additions += text.length;
 				if (config.trackLocalCharacters) {
-					charMap.enterCharData(text);
+					stats.local.characterData.inputCharacterData(text);
 				}
 			}
 		}
@@ -58,17 +57,20 @@ export function activate(context: vscode.ExtensionContext) {
 			provider.refreshLocalStats({...stats.local});
 		}
 
-		if (countSinceLastRank >= RANK_SIZE) {
-			countSinceLastRank = 0;
-			stats.local.rank += 1;
-			provider.refreshLocalStats({...stats.local});
-		}
-
 		if (countSinceLastCharacterRefresh >= config.charRefreshRate) {
 			countSinceLastCharacterRefresh = 0;
 			if (config.trackLocalCharacters) {
-				stats.local.favoriteChar = charMap.calculateFavoriteChar();
-				provider.refreshLocalFavoriteCharater(stats.local.favoriteChar);
+				provider.refreshCharacterData(stats.local.characterData);
+			}
+		}
+
+		if (countSinceLastRank >= RANK_SIZE) {
+			countSinceLastRank = 0;
+			stats.local.rank += 1;
+			if (config.trackLocalCharacters) {
+				provider.refreshLocalStats({...stats.local}, stats.local.characterData);
+			} else {
+				provider.refreshLocalStats({...stats.local});
 			}
 		}
 	});
@@ -76,47 +78,17 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.commands.registerCommand("coderank.refreshLocal", () => {
 		countSinceLastCharacterRefresh = 0;
 		countSinceLastRefresh = 0;
-		stats.local.favoriteChar = charMap.calculateFavoriteChar();
-		provider.refreshLocalStats({...stats.local}, stats.local.favoriteChar);
+		if (config.trackLocalCharacters) {
+			provider.refreshLocalStats({...stats.local}, stats.local.characterData);
+		} else {
+			provider.refreshLocalStats({...stats.local});
+		}
 	});
 
 	vscode.commands.registerCommand("coderank.rankProgress", () => {
 		vscode.window.showInformationMessage(
 			`Progress towards next rank: ${countSinceLastRank}/${RANK_SIZE}`
 		);
-	});
-
-	vscode.commands.registerCommand("coderank.displayLocalCharacterData", () => {
-		if (!config.trackLocalCharacters) {
-			vscode.window.showErrorMessage(
-				"Please enable local character tracking via coderank.trackCharacters\
-				in settings.json to access character data"
-			);
-			return;
-		}
-		try {
-			provider.insertCharacterData(charMap.map);
-			vscode.window.showInformationMessage(
-				"Your character data is available in the coderank pannel"
-			);
-		} catch {
-			vscode.window.showWarningMessage(
-				"Character data is empty. Please try again after typing some characters."
-			);
-		}
-	});
-
-	vscode.commands.registerCommand("coderank.removeLocalCharacterDataDisplay", () => {
-		try {
-			provider.removeCharacterData();
-			vscode.window.showInformationMessage(
-				"Removed character data"
-			);
-		} catch {
-			vscode.window.showWarningMessage(
-				"No character data to remove"
-			);
-		}
 	});
 }
 
@@ -132,7 +104,7 @@ type Config = {
 function getConfig(): Config {
 	const config = vscode.workspace.getConfiguration("coderank");
 	const refreshRate = config.get<number>("refreshRate", 10);
-	const charRefreshRate = config.get<number>("favoriteCharacterRefreshRate", 100);
+	const charRefreshRate = config.get<number>("characterDataRefreshRate", 1000);
 	const trackCharacters = config.get<string[]>("trackCharacters", ["local", "remote"]);
 	const saveLocally = config.get<boolean>("saveLocally", true);
 	const saveRemotely = config.get<boolean>("saveRemotely", true);
@@ -148,11 +120,11 @@ function getConfig(): Config {
 }
 
 type StatFields = {
+	rank: number,
 	total: number,
 	added: number,
 	deleted: number,
-	favoriteChar: string,
-	rank: number,
+	characterData: CharData,
 };
 
 type Stats = {
@@ -164,17 +136,17 @@ function getStats(localTotal: number = 0, remoteTotal: number = 0): Stats {
 	return {
 		local: {
 			total: localTotal,
+			rank: 0,
 			added: 0,
 			deleted: 0,
-			favoriteChar: "",
-			rank: 0,
+			characterData: new CharData(),
 		},
 		remote: {
 			total: remoteTotal,
+			rank: 0,
 			added: 0,
 			deleted: 0,
-			favoriteChar: "",
-			rank: 0,
+			characterData: new CharData(),
 		}
 	};
 }
@@ -183,13 +155,18 @@ interface CharacterHashMap {
 	[key: string]: number;
 }
 
+type SortOrder = "keyAsc" | "keyDesc" | "valAsc" | "valDesc";
+
 class CharData {
-	map: CharacterHashMap;
+	private map: CharacterHashMap;
+	private sortOrder: SortOrder = "valDesc";
+	private lengthWhenLastSorted = 0;
+
 	constructor() {
 		this.map = {};
 	}
 
-	enterCharData(text: string): void {
+	inputCharacterData(text: string): void {
 		for (const char of text) {
 			if (char === "\r") {
 				continue;
@@ -202,25 +179,44 @@ class CharData {
 		}
 	}
 
-	calculateFavoriteChar(): string {
-		let maxKey = "";
-		let maxValue = 0;
-		for (const [key, value] of Object.entries(this.map)) {
-			if (value > maxValue) {
-				maxValue = value;
-				maxKey = key;
-			}
+	getMap(): CharacterHashMap {
+		const length = Object.keys(this.map).length;
+		if (length !== this.lengthWhenLastSorted) {
+			this.sortMap();
+			this.lengthWhenLastSorted = length;
 		}
-		return maxKey;
+		return this.map;
+	}
+
+	sortMap(): void {
+		let entries = Object.entries(this.map);
+		switch (this.sortOrder) {
+			case "keyAsc":
+				entries.sort(([key1], [key2]) => key1.localeCompare(key2));
+				break;
+			case "keyDesc":
+				entries.sort(([key1], [key2]) => key2.localeCompare(key1));
+				break;
+			case "valAsc":
+				entries.sort(([, val1], [, val2]) => val1 - val2);
+				break;
+			case "valDesc":
+				entries.sort(([, val1], [, val2]) => val2 - val1);
+				break;
+		}
+		this.map = {};
+		for (const [key, val] of entries) {
+			this.map[key] = val;
+		}
+	}
+
+	setSortOrder(order: SortOrder): void {
+		this.sortOrder = order;
+		this.sortMap();
 	}
 }
 
-function getCharMap(): CharData {
-	return new CharData();
-}
-
 type StatItemInitializationOptions = {
-	id: string;
     label: string;
     expanded?: boolean;
     iconPath?: vscode.ThemeIcon;
@@ -233,7 +229,7 @@ type StatItemInitializationOptions = {
 class StatItem extends vscode.TreeItem {
 	children: StatItem[] | undefined;
 	constructor(
-		{children, expanded = true, label, id, iconPath, tooltip, description, contextValue}
+		{children, expanded = true, label, iconPath, tooltip, description, contextValue}
 		: StatItemInitializationOptions
 	) {
 		const collapsibleState = children === undefined
@@ -244,7 +240,6 @@ class StatItem extends vscode.TreeItem {
 
 		super(label, collapsibleState);
 		this.contextValue = contextValue;
-		this.id = id;
 		this.iconPath = iconPath;
 		this.tooltip = tooltip;
 		this.children = children;
@@ -265,40 +260,53 @@ class CoderankStatsProvider implements vscode.TreeDataProvider<StatItem> {
 		this.setStatData(config, stats);
 	}
 
+	private buildCharacterDataChildren(characterData: CharacterHashMap): StatItem {
+		const children = [];
+		const entries = Object.entries(characterData);
+		for (const [key, value] of entries) {
+			children.push(
+				new StatItem({
+					label: key,
+					description: value.toString(),
+				})
+			);
+		}
+		const parent = new StatItem({
+			label: "character data",
+			iconPath: new vscode.ThemeIcon("output"),
+			tooltip: "A list of the amount of times each character has been pressed.\
+			\nThis list does not update automatically.",
+			children,
+			expanded: false,
+			contextValue: "characterData",
+		});
+		return parent;
+	}
+
 	private buildStatDataChildren(
 		location: "local" | "remote",
-		trackCharacters: boolean,
-		{added, deleted, favoriteChar, rank}: StatFields
+		{rank, added, deleted, characterData}: StatFields,
+		displayCharacters?: boolean,
 	): StatItem[] {
 		const children = [
 			new StatItem({
-				id: `${location}Rank`,
 				label: rank.toString(),
 				iconPath: new vscode.ThemeIcon("mortar-board"),
 				tooltip: `${location} rank\n1 rank = 10,000 additions/deletions`
 			}),
 			new StatItem({
-				id: `${location}Additions`,
 				label: added.toString(),
 				iconPath: new vscode.ThemeIcon("record-small"),
 				tooltip: `${location} additions`
 			}),
 			new StatItem({
-				id: `${location}Deletions`,
 				label: deleted.toString(),
 				iconPath: new vscode.ThemeIcon("error-small"),
 				tooltip: `${location} deletions`
 			}),
 		];
-		if (trackCharacters) {
-			children.push(
-				new StatItem({
-					id: `${location}FavoriteCharacter`,
-					label: favoriteChar,
-					iconPath: new vscode.ThemeIcon("heart"),
-					tooltip: `${location} favorite character`
-				})
-			);
+		if (displayCharacters === true) {
+			this.data.push(this.buildCharacterDataChildren(characterData.getMap()));
 		}
 		return children;
 	}
@@ -306,12 +314,11 @@ class CoderankStatsProvider implements vscode.TreeDataProvider<StatItem> {
 	setStatData(config: Config, stats: Stats): void {
 		const localChildren = this.buildStatDataChildren(
 			"local",
+			{...stats.local},
 			config.trackLocalCharacters,
-			{...stats.local}
 		);
 		this.data = [
 			new StatItem({
-				id: "localTotal",
 				label: stats.local.total.toString(),
 				iconPath: new vscode.ThemeIcon("keyboard"),
 				tooltip: "local total",
@@ -321,12 +328,10 @@ class CoderankStatsProvider implements vscode.TreeDataProvider<StatItem> {
 		if (config.saveRemotely) {
 			const remoteChildren = this.buildStatDataChildren(
 				"remote",
-				config.trackRemoteCharacters,
-				{...stats.remote}
+				{...stats.remote},
 			);
 			this.data.push(
 				new StatItem({
-					id: "remoteTotal",
 					label: stats.remote.total.toString(),
 					iconPath: new vscode.ThemeIcon("cloud"),
 					tooltip: "remote total",
@@ -348,77 +353,29 @@ class CoderankStatsProvider implements vscode.TreeDataProvider<StatItem> {
 		return Promise.resolve(this.data);
 	}
 
-	refresh(statToUpdate?: StatItem): void {
-		this._onDidChangeTreeData.fire(statToUpdate);
+	refresh(): void {
+		this._onDidChangeTreeData.fire(null);
 	}
 
-	refreshLocalFavoriteCharater(favoriteChar: string): void {
-		const localStats = this.data[0];
-		if (localStats.children !== undefined) {
-			localStats.children[3].label = favoriteChar;
-			this.refresh(localStats.children[3]);
-		}
-	}
-
-	refreshLocalStats({total, added, deleted, rank}: StatFields, favoriteChar?: string): void {
+	refreshLocalStats({total, added, deleted, rank}: StatFields, characterData?: CharData): void {
 		const localStats = this.data[0];
 		localStats.label = total.toString();
 		if (localStats.children !== undefined) {
 			localStats.children[0].label = rank.toString();
 			localStats.children[1].label = added.toString();
 			localStats.children[2].label = deleted.toString();
-			if (favoriteChar !== undefined) {
-				localStats.children[3].label = favoriteChar;
+			if (characterData !== undefined) {
+				localStats.children[3] = this.buildCharacterDataChildren(characterData.getMap());
 			}
 		}
 		this.refresh();
 	}
 
-	private buildCharacterDataChildren(map: CharacterHashMap): StatItem[] {
-		const children = [];
-		const entries = Object.entries(map).sort(([key1], [key2]) => key1.localeCompare(key2));
-		for (const [key, value] of entries) {
-			children.push(
-				new StatItem({
-					id: key,
-					label: key,
-					description: value.toString(),
-				})
-			);
+	refreshCharacterData(characterData: CharData): void {
+		if (this.data[0].children?.length === 4) {
+			this.data[0].children[3] = this.buildCharacterDataChildren(characterData.getMap());
 		}
-		return children;
-	}
-
-	insertCharacterData(map: CharacterHashMap): void {
-		if (Object.entries(map).length === 0) {
-			throw new Error("Empty character data");
-		}
-		if (this.data.length === 3) {
-			this.data.pop();
-		}
-		const children = this.buildCharacterDataChildren(map);
-		this.data.push(
-			new StatItem({
-				id: "characterData",
-				label: "character data",
-				iconPath: new vscode.ThemeIcon("output"),
-				tooltip: "A list of the amount of times each character has been pressed.\
-				\nThis list does not update automatically.",
-				children,
-				expanded: false,
-				contextValue: "characterData",
-			})
-		);
 		this.refresh();
-	}
-
-	removeCharacterData(): void {
-		if (this.data.length === 3) {
-			this.data.pop();
-			this.refresh();
-		} else {
-			throw new Error("No active character data");
-		}
 	}
 }
 
