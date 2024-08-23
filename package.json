@@ -14,13 +14,23 @@
   "contributes": {
     "commands": [
       {
-        "command": "coderank.refreshLocal",
+        "command": "coderank.refreshProject",
         "title": "Refresh local values",
         "icon": "$(refresh)"
       },
       {
-        "command": "coderank.rankProgress",
-        "title": "Check rank progress"
+        "command": "coderank.storeProject",
+        "title": "Add project values to local storage",
+        "icon": "$(desktop-download)"
+      },
+      {
+        "command": "coderank.pushToRemote",
+        "title": "Push local values to remote repo",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "coderank.sortCharacterData",
+        "title": "Sort character data"
       }
     ],
     "views": {
@@ -46,20 +56,16 @@
           "description": "Refresh character data every X characters."
         },
         "coderank.trackCharacters": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": ["local", "remote"]
-          },
-          "default": ["local", "remote"],
-          "description": "Track the values of each typed/pasted character. This stores the amount of all characters typed. Default ['local', 'remote']"
+          "type": "boolean",
+          "default": "true",
+          "description": "Track the values of each typed/pasted character."
         },
-        "coderank.saveLocally": {
+        "coderank.storeLocally": {
           "type": "boolean",
           "default": true,
           "description": "Save local values to local storage. If disabled, local values will not coordinate between different windows, and will be lost when the windows are closed"
         },
-        "coderank.saveRemotely": {
+        "coderank.storeRemotely": {
           "type": "boolean",
           "default": true,
           "description": "If disabled, remote values will not be shown in the treeview, and stats will not be pushed nor pulled to and from GitHub"
@@ -69,17 +75,26 @@
     "menus": {
       "view/title": [
         {
-          "command": "coderank.refreshLocal",
+          "command": "coderank.refreshProject",
           "when": "view == coderank",
           "group": "navigation"
         },
         {
-          "command": "coderank.rankProgress",
+          "command": "coderank.storeProject",
+          "when": "view == coderank",
+          "group": "navigation"
+        },
+        {
+          "command": "coderank.pushToRemote",
+          "when": "view == coderank",
+          "group": "navigation"
+        },
+        {
+          "command": "coderank.sortCharacterData",
           "when": "view == coderank",
           "group": "inline"
         }
-      ],
-      "view/item/context": []
+      ]
     }
   },
   "scripts": {
