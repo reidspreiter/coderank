@@ -13,10 +13,6 @@ type StatItemInitializationOptions = {
 	contextValue?: string;
 };
 
-function getFieldLocationIndex(location: FieldLocation): number {
-	return location === "project" ? 0 : location === "local" ? 1 : 2;
-}
-
 class StatItem extends TreeItem {
 	children: StatItem[] | undefined;
 	constructor(
@@ -49,6 +45,10 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
 	constructor(config: Config, stats: Stats) {
 		this.setData(config, stats);
+	}
+	
+	private getFieldLocationIndex(location: FieldLocation): number {
+		return location === "project" ? 0 : location === "local" ? 1 : 2;
 	}
 
 	private buildCharDataChildren(charData: CharHashMap): StatItem {
@@ -172,7 +172,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
 	setFields(fields: Fields, location: FieldLocation, options?: "refreshCharDataOnly" | "refreshAll"): void {
 		const {rank, total, added, deleted, charData} = fields;
-		const stats = this.data[getFieldLocationIndex(location)];
+		const stats = this.data[this.getFieldLocationIndex(location)];
 		stats.label = rank.toString();
 
 		if (stats.children !== undefined) {
