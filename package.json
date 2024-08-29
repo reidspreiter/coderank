@@ -19,9 +19,13 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "coderank.storeProject",
+        "command": "coderank.storeProjectValues",
         "title": "Add project values to local storage",
         "icon": "$(desktop-download)"
+      },
+      {
+        "command": "coderank.loadLocalValues",
+        "title": "Load values from local storage"
       },
       {
         "command": "coderank.pushToRemote",
@@ -60,6 +64,20 @@
           "default": "true",
           "description": "Track the values of each typed/pasted character."
         },
+        "coderank.characterSortOrder": {
+          "type": "string",
+          "enum": [
+            "keyAsc", "keyDesc", "valAsc", "valDesc"
+          ],
+          "enumDescriptions": [
+            "Ascending by character",
+            "Descending by character",
+            "Ascending by amount",
+            "Descending by amount"
+          ],
+          "default": "valDesc",
+          "description": "Default sort order for character data."
+        },
         "coderank.storeLocally": {
           "type": "boolean",
           "default": true,
@@ -80,7 +98,7 @@
           "group": "navigation"
         },
         {
-          "command": "coderank.storeProject",
+          "command": "coderank.storeProjectValues",
           "when": "view == coderank",
           "group": "navigation"
         },
@@ -91,6 +109,11 @@
         },
         {
           "command": "coderank.sortCharacterData",
+          "when": "view == coderank",
+          "group": "inline"
+        },
+        {
+          "command": "coderank.loadLocalValues",
           "when": "view == coderank",
           "group": "inline"
         }

@@ -6,40 +6,58 @@ export interface CharHashMap {
 
 export type CharSortOrder = "keyAsc" | "keyDesc" | "valAsc" | "valDesc";
 
-export class CharData {
-	private map: CharHashMap;
-	private sortOrder: CharSortOrder = "valDesc";
-	private lengthWhenLastSorted = 0;
+type CharDataOptions = {
+	map?: CharHashMap,
+	sortOrder?: CharSortOrder,
+};
 
-	constructor() {
-		this.map = {};
+export class CharData {
+	private _map: CharHashMap;
+	private _sortOrder: CharSortOrder;
+	private lengthWhenLastSorted;
+
+	constructor({map, sortOrder}: CharDataOptions = {}) {
+		this._map = map ?? {};
+		this._sortOrder = sortOrder ?? "valDesc";
+		this.lengthWhenLastSorted = 0;
+		this.sortMap();
 	}
 
-	inputData(text: string): void {
+	static fromJSON(json: any): CharData {
+		const {map, sortOrder} = json;
+		return new CharData({map, sortOrder});
+	}
+
+	input(text: string): void {
 		for (const char of text) {
 			if (char === "\r") {
 				continue;
 			}
-			if (char in this.map) {
-				this.map[char] += 1;
+			if (char in this._map) {
+				this._map[char] += 1;
 			} else {
-				this.map[char] = 1;
+				this._map[char] = 1;
 			}
 		}
 	}
 
-	getMap(): CharHashMap {
-		const length = Object.keys(this.map).length;
+	get map(): CharHashMap {
+		const length = Object.keys(this._map).length;
 		if (length !== this.lengthWhenLastSorted) {
 			this.sortMap();
-			this.lengthWhenLastSorted = length;
 		}
-		return this.map;
+		return this._map;
 	}
 
-	sortMap(): void {
-		let entries = Object.entries(this.map);
-		switch (this.sortOrder) {
+	get sortOrder(): CharSortOrder {
+		return this._sortOrder;
+	}
+
+	sortMap(sortOrder?: CharSortOrder): void {
+		this._sortOrder = sortOrder ?? this._sortOrder;
+		let entries = Object.entries(this._map);
+		this.lengthWhenLastSorted = entries.length;
+		switch (this._sortOrder) {
 			case "keyAsc":
 				entries.sort(([key1], [key2]) => key1.localeCompare(key2));
 				break;
@@ -53,15 +71,20 @@ export class CharData {
 				entries.sort(([, val1], [, val2]) => val2 - val1);
 				break;
 		}
-		this.map = {};
+		this._map = {};
 		for (const [key, val] of entries) {
-			this.map[key] = val;
+			this._map[key] = val;
 		}
 	}
 
-	setSortOrder(order: CharSortOrder): void {
-		this.sortOrder = order;
-		this.sortMap();
+	append(map: CharHashMap): void {
+		for (const [key, val] of Object.entries(map)) {
+			if (key in this._map) {
+				this._map[key] += val;
+			} else {
+				this._map[key] = val;
+			}
+		}
 	}
 }
 
@@ -77,10 +100,10 @@ class SortOrderQuickPickItem implements QuickPickItem {
 
 export async function charSortQuickPick(): Promise<CharSortOrder | undefined> {
     const sortOrders: SortOrderQuickPickItem[] = [
-			{label: "Character ascending", alias: "keyAsc"},
-			{label: "Character descending", alias: "keyDesc"},
-			{label: "Amount ascending", alias: "valAsc"},
-			{label: "Amount descending", alias: "valDesc"},
+			{label: "Ascending by character", alias: "keyAsc"},
+			{label: "Descending by character", alias: "keyDesc"},
+			{label: "Ascending by amount", alias: "valAsc"},
+			{label: "Descending by amount", alias: "valDesc"},
 		];
 
     const selectedOrder = await window.showQuickPick(sortOrders, {

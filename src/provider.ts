@@ -1,9 +1,7 @@
 import { ThemeIcon, TreeItem, TreeItemCollapsibleState, TreeDataProvider, EventEmitter, Event } from "vscode";
 import { CharData, CharHashMap } from "./characters";
 import { Config } from "./config";
-import { Stats, StatFields, StatLocation } from "./stats";
-
-const RANK_SIZE = 10000;
+import { Stats, Fields, FieldLocation } from "./stats";
 
 type StatItemInitializationOptions = {
     label: string;
@@ -14,6 +12,10 @@ type StatItemInitializationOptions = {
     description?: string;
 	contextValue?: string;
 };
+
+function getFieldLocationIndex(location: FieldLocation): number {
+	return location === "project" ? 0 : location === "local" ? 1 : 2;
+}
 
 class StatItem extends TreeItem {
 	children: StatItem[] | undefined;
@@ -49,9 +51,9 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 		this.setData(config, stats);
 	}
 
-	private buildCharacterDataChildren(characterData: CharHashMap): StatItem {
+	private buildCharDataChildren(charData: CharHashMap): StatItem {
 		let children = undefined;
-		const entries = Object.entries(characterData);
+		const entries = Object.entries(charData);
         if (entries.length !== 0) {
             children = [];
             for (const [key, value] of entries) {
@@ -76,10 +78,11 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 	}
 
 	private buildChildren(
-		location: StatLocation,
-		{total, added, deleted, charData}: StatFields,
+		location: FieldLocation,
+		fields: Fields,
         trackCharacters: boolean,
 	): StatItem[] {
+		const {total, added, deleted, charData} = fields;
 		const children = [
 			new StatItem({
 				label: total.toString(),
@@ -98,7 +101,8 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 			}),
 		];
         if (trackCharacters) {
-            children.push(this.buildCharacterDataChildren(charData.getMap()));
+			console.log(charData);
+            children.push(this.buildCharDataChildren(charData.map));
         }
 		return children;
 	}
@@ -106,7 +110,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 	setData(config: Config, stats: Stats): void {
 		const projectChildren = this.buildChildren(
 			"project",
-			{...stats.project},
+			stats.project,
 			config.trackCharacters,
 		);
 		this.data = [
@@ -120,7 +124,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         if (config.storeLocally) {
             const localChildren = this.buildChildren(
                 "local",
-                {...stats.local},
+                stats.local,
                 config.trackCharacters,
             );
             this.data.push(
@@ -136,7 +140,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 		if (config.storeRemotely) {
 			const remoteChildren = this.buildChildren(
 				"remote",
-				{...stats.remote},
+				stats.remote,
                 config.trackCharacters,
 			);
 			this.data.push(
@@ -166,24 +170,30 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 		this._onDidChangeTreeData.fire(null);
 	}
 
-	refreshProjectStats({total, added, deleted, rank}: StatFields, characterData?: CharData): void {
-		const localStats = this.data[0];
-		localStats.label = rank.toString();
-		if (localStats.children !== undefined) {
-			localStats.children[0].label = total.toString();
-			localStats.children[1].label = added.toString();
-			localStats.children[2].label = deleted.toString();
-			if (characterData !== undefined) {
-				localStats.children[3] = this.buildCharacterDataChildren(characterData.getMap());
+	setFields(fields: Fields, location: FieldLocation, options?: "refreshCharDataOnly" | "refreshAll"): void {
+		const {rank, total, added, deleted, charData} = fields;
+		const stats = this.data[getFieldLocationIndex(location)];
+		stats.label = rank.toString();
+
+		if (stats.children !== undefined) {
+			if (options !== "refreshCharDataOnly") {
+				stats.children[0].label = total.toString();
+				stats.children[1].label = added.toString();
+				stats.children[2].label = deleted.toString();
+			}
+			if (options === "refreshCharDataOnly" || options === "refreshAll") {
+				stats.children[3] = this.buildCharDataChildren(charData.map);
 			}
 		}
 		this.refresh();
 	}
 
-	refreshCharacterData(characterData: CharData): void {
-		if (this.data[0].children?.length === 4) {
-			this.data[0].children[3] = this.buildCharacterDataChildren(characterData.getMap());
-		}
+	refreshAllCharData(stats: Stats): void {
+		Object.entries(stats).forEach(([, value], index) => {
+			if (this.data[index].children?.length === 4) {
+				this.data[index].children[3] = this.buildCharDataChildren(value.charData.map);
+			}
+		});
 		this.refresh();
 	}
 }
