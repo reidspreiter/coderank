@@ -205,6 +205,37 @@ export class Stats {
         }
     }
 
+    private async getYearStats(
+        coderankDir: string,
+        coderankPath: string
+    ): Promise<StatsJSON | undefined> {
+        let yearStats = await this.readJSONFile<StatsJSON>(coderankPath);
+
+        if (yearStats === undefined) {
+            return undefined;
+        } else if (yearStats === null) {
+            // A new year has started. If the user used coderank last year, update backup and total
+            const prevYearPath = path.join(coderankDir, this.makeFileName(this.year - 1));
+            const prevYearStats = await this.readJSONFile<StatsJSON>(prevYearPath);
+
+            if (prevYearStats !== null && prevYearStats !== undefined) {
+                await this.writeBackupFile(coderankDir, this.year - 1, prevYearStats);
+                await this.updateTotalFile(coderankDir, prevYearStats);
+            }
+
+            yearStats = buildStatsJSON(this.year, this.week);
+        } else if (yearStats.weeks.length < this.week) {
+            // A new week has started, update backup and total
+            await this.writeBackupFile(coderankDir, this.year, yearStats);
+            await this.updateTotalFile(coderankDir, yearStats);
+
+            for (let i = yearStats.weeks.length + 1; i <= this.week; i++) {
+                yearStats.weeks.push(buildFields("json", { week: i }));
+            }
+        }
+        return yearStats;
+    }
+
     async storeLocal(
         context: ExtensionContext,
         calledAutomatically: boolean = true
@@ -216,28 +247,9 @@ export class Stats {
             return;
         }
 
-        let yearStats = await this.readJSONFile<StatsJSON>(coderankPath);
+        const yearStats = await this.getYearStats(coderankDir, coderankPath);
         if (yearStats === undefined) {
             return;
-        } else if (yearStats === null) {
-            // A new year has started
-            const prevYearPath = path.join(coderankDir, this.makeFileName(this.year - 1));
-            const prevYearStats = await this.readJSONFile<StatsJSON>(prevYearPath);
-
-            // If the user used coderank last year
-            if (prevYearStats !== null && prevYearStats !== undefined) {
-                await this.writeBackupFile(coderankDir, this.year - 1, prevYearStats);
-                await this.updateTotalFile(coderankDir, prevYearStats);
-            }
-            yearStats = buildStatsJSON(this.year, this.week);
-        } else if (yearStats.weeks.length < this.week) {
-            // A new week has started
-            await this.writeBackupFile(coderankDir, this.year, yearStats);
-            await this.updateTotalFile(coderankDir, yearStats);
-
-            for (let i = yearStats.weeks.length + 1; i <= this.week; i++) {
-                yearStats.weeks.push(buildFields("json", { week: i }));
-            }
         }
 
         const projectStats = this.project;
