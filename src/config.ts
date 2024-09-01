@@ -1,13 +1,13 @@
 import { workspace } from "vscode";
-import { CharSortOrder } from "./characters";
 
 export type Config = {
-	refreshRate: number;
-	charRefreshRate: number;
-	trackCharacters: boolean;
-    characterSortOrder: CharSortOrder;
-	storeLocally: boolean;
-	storeRemotely: boolean;
+    refreshRate: number;
+    charRefreshRate: number;
+    trackChars: boolean;
+    storeLocally: boolean;
+    autoStoreLocallyOnDocumentSave: boolean;
+    loadLocalOnStartup: boolean;
+    storeRemotely: boolean;
 };
 
 export function getConfig(): Config {
@@ -15,9 +15,10 @@ export function getConfig(): Config {
     return {
         refreshRate: config.get<number>("refreshRate", 10),
         charRefreshRate: config.get<number>("characterDataRefreshRate", 1000),
-        trackCharacters: config.get<boolean>("trackCharacters", true),
-        characterSortOrder: config.get<CharSortOrder>("characterSortOrder", "valDesc"),
+        trackChars: config.get<boolean>("trackCharacters", true),
         storeLocally: config.get<boolean>("storeLocally", true),
+        autoStoreLocallyOnDocumentSave: config.get<boolean>("autoStoreLocallyOnDocumentSave", true),
+        loadLocalOnStartup: config.get<boolean>("loadLocalOnStartup", true),
         storeRemotely: config.get<boolean>("storeRemotely", true),
     };
 }
