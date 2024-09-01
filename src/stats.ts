@@ -42,8 +42,6 @@ type FieldValues = {
     jsonTotal: Partial<FieldsTotalJSON>;
 };
 
-export type FieldLocation = "project" | "local" | "remote";
-
 function buildFields<T extends keyof FieldType>(type: T, options?: FieldValues[T]): FieldType[T] {
     const defaultFields = {
         rank: 0,
@@ -145,36 +143,15 @@ export class Stats {
         }
     }
 
-    private async dirExists(path: string): Promise<boolean> {
-        try {
-            await fs.mkdir(path, { recursive: true });
-            return true;
-        } catch (err) {
-            window.showErrorMessage(`Error making directory ${path}: ${err}`);
-            return false;
-        }
-    }
-
-    private async readJSONFile<T>(filePath: string): Promise<T | null | undefined> {
+    private async readJSONFile<T>(filePath: string): Promise<T | null> {
         try {
             const data = await fs.readFile(filePath, "utf-8");
             return JSON.parse(data);
         } catch (err) {
             if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-                window.showErrorMessage(`Error reading from ${filePath}: ${err}`);
-                return undefined;
+                throw err;
             }
             return null;
-        }
-    }
-
-    private async writeJSONFile(filePath: string, data: any): Promise<boolean> {
-        try {
-            await fs.writeFile(filePath, data, "utf-8");
-            return true;
-        } catch (err) {
-            window.showErrorMessage(`Error writing to ${filePath}: ${err}`);
-            return false;
         }
     }
 
@@ -184,16 +161,19 @@ export class Stats {
         yearStats: StatsJSON
     ): Promise<void> {
         const backupDir = path.join(directory, "backups");
-        if (await this.dirExists(backupDir)) {
+        try {
+            await fs.mkdir(backupDir, { recursive: true });
             const backupPath = path.join(backupDir, `backupcoderank${year}.json`);
-            await this.writeJSONFile(backupPath, await zip(JSON.stringify(yearStats)));
+            await fs.writeFile(backupPath, await zip(JSON.stringify(yearStats)), "utf-8");
+        } catch (err) {
+            window.showErrorMessage(`Error writing backup file: ${err}`);
         }
     }
 
     private async updateTotalFile(directory: string, yearStats: StatsJSON): Promise<void> {
         const totalPath = path.join(directory, this.totalFilename);
-        let total = await this.readJSONFile<FieldsTotalJSON>(totalPath);
-        if (total !== undefined) {
+        try {
+            let total = await this.readJSONFile<FieldsTotalJSON>(totalPath);
             if (total === null) {
                 total = buildFields("jsonTotal");
             }
@@ -201,32 +181,37 @@ export class Stats {
             total = addFields("jsonTotal", total, {
                 ...convertFields("json", "jsonTotal", prevWeekStats),
             });
-            await this.writeJSONFile(totalPath, JSON.stringify(total));
+            await fs.writeFile(totalPath, JSON.stringify(total), "utf-8");
+        } catch (err) {
+            window.showErrorMessage(`Error updating total file: ${err}`);
         }
     }
 
     private async getYearStats(
         coderankDir: string,
-        coderankPath: string
-    ): Promise<StatsJSON | undefined> {
+        coderankPath: string,
+        backup: boolean
+    ): Promise<StatsJSON> {
         let yearStats = await this.readJSONFile<StatsJSON>(coderankPath);
 
-        if (yearStats === undefined) {
-            return undefined;
-        } else if (yearStats === null) {
+        if (yearStats === null) {
             // A new year has started. If the user used coderank last year, update backup and total
             const prevYearPath = path.join(coderankDir, this.makeFileName(this.year - 1));
             const prevYearStats = await this.readJSONFile<StatsJSON>(prevYearPath);
 
-            if (prevYearStats !== null && prevYearStats !== undefined) {
-                await this.writeBackupFile(coderankDir, this.year - 1, prevYearStats);
+            if (prevYearStats !== null) {
+                if (backup) {
+                    await this.writeBackupFile(coderankDir, this.year - 1, prevYearStats);
+                }
                 await this.updateTotalFile(coderankDir, prevYearStats);
             }
 
             yearStats = buildStatsJSON(this.year, this.week);
         } else if (yearStats.weeks.length < this.week) {
             // A new week has started, update backup and total
-            await this.writeBackupFile(coderankDir, this.year, yearStats);
+            if (backup) {
+                await this.writeBackupFile(coderankDir, this.year, yearStats);
+            }
             await this.updateTotalFile(coderankDir, yearStats);
 
             for (let i = yearStats.weeks.length + 1; i <= this.week; i++) {
@@ -236,56 +221,56 @@ export class Stats {
         return yearStats;
     }
 
-    async storeLocal(
+    async dumpProjectToLocal(
         context: ExtensionContext,
-        calledAutomatically: boolean = true
+        options: { automatic?: boolean; backup?: boolean }
     ): Promise<void> {
         const coderankDir = context.globalStorageUri.fsPath;
         const coderankPath = path.join(coderankDir, this.statsFilename);
-
-        if (!(await this.dirExists(coderankDir))) {
-            return;
-        }
-
-        const yearStats = await this.getYearStats(coderankDir, coderankPath);
-        if (yearStats === undefined) {
-            return;
-        }
-
-        const projectStats = this.project;
+        const { automatic = true, backup = true } = options;
+        const projectStatsCopy = this.project;
         this.project = buildFields("base");
+        const localStatsCopy = this.local;
 
-        yearStats.total = addFields(
-            "json",
-            yearStats.total,
-            convertFields("base", "json", projectStats)
-        );
-        this.local = convertFields("json", "base", yearStats.total);
+        try {
+            await fs.mkdir(coderankDir, { recursive: true });
+            const yearStats = await this.getYearStats(coderankDir, coderankPath, backup);
 
-        yearStats.weeks[this.week - 1] = addFields(
-            "json",
-            yearStats.weeks[this.week - 1],
-            convertFields("base", "json", projectStats)
-        );
+            yearStats.total = addFields(
+                "json",
+                yearStats.total,
+                convertFields("base", "json", projectStatsCopy)
+            );
 
-        if (await this.writeJSONFile(coderankPath, JSON.stringify(yearStats))) {
-            dynamicSuccessMessage(`Saved coderank data to ${coderankPath}`, calledAutomatically);
-        } else {
-            this.project = projectStats;
-            this.local = buildFields("base");
+            this.local = convertFields("json", "base", yearStats.total);
+            yearStats.weeks[this.week - 1] = addFields(
+                "json",
+                yearStats.weeks[this.week - 1],
+                convertFields("base", "json", projectStatsCopy)
+            );
+
+            await fs.writeFile(coderankPath, JSON.stringify(yearStats), "utf-8");
+            dynamicSuccessMessage(`Saved coderank data to ${coderankPath}`, automatic);
+        } catch (err) {
+            this.project = projectStatsCopy;
+            this.local = localStatsCopy;
+            window.showErrorMessage(`Error dumping project values to local storage: ${err}`);
         }
     }
 
     async loadLocal(context: ExtensionContext): Promise<void> {
         const coderankPath = path.join(context.globalStorageUri.fsPath, this.statsFilename);
-        const yearStats = await this.readJSONFile<StatsJSON>(coderankPath);
-
-        if (yearStats) {
-            this.local = buildFields("base", {
-                ...yearStats.total,
-                chars: new CharData(yearStats.total.chars),
-            });
-            window.setStatusBarMessage("Loaded local coderank data", 8000);
+        try {
+            const yearStats = await this.readJSONFile<StatsJSON>(coderankPath);
+            if (yearStats) {
+                this.local = buildFields("base", {
+                    ...yearStats.total,
+                    chars: new CharData(yearStats.total.chars),
+                });
+                window.setStatusBarMessage("Loaded local coderank data", 8000);
+            }
+        } catch (err) {
+            window.showErrorMessage(`Error loading values from local storage: ${err}`);
         }
     }
 }

@@ -1,13 +1,16 @@
 import { workspace } from "vscode";
 
+export type Mode = "project" | "local" | "remote";
+export type Location = Mode;
+
 export type Config = {
     refreshRate: number;
     charRefreshRate: number;
     trackChars: boolean;
-    storeLocally: boolean;
     autoStoreLocallyOnDocumentSave: boolean;
     loadLocalOnStartup: boolean;
-    storeRemotely: boolean;
+    createLocalBackup: boolean;
+    mode: Mode;
 };
 
 export function getConfig(): Config {
@@ -16,9 +19,9 @@ export function getConfig(): Config {
         refreshRate: config.get<number>("refreshRate", 10),
         charRefreshRate: config.get<number>("characterDataRefreshRate", 1000),
         trackChars: config.get<boolean>("trackCharacters", true),
-        storeLocally: config.get<boolean>("storeLocally", true),
         autoStoreLocallyOnDocumentSave: config.get<boolean>("autoStoreLocallyOnDocumentSave", true),
         loadLocalOnStartup: config.get<boolean>("loadLocalOnStartup", true),
-        storeRemotely: config.get<boolean>("storeRemotely", true),
+        createLocalBackup: config.get<boolean>("createLocalBackup", true),
+        mode: config.get<Mode>("mode", "remote"),
     };
 }

@@ -7,7 +7,7 @@ export async function activate(context: ExtensionContext) {
     let config = getConfig();
 
     const stats = new Stats();
-    if (config.loadLocalOnStartup && config.storeLocally) {
+    if (config.loadLocalOnStartup && config.mode !== "project") {
         await stats.loadLocal(context);
     }
 
@@ -25,8 +25,8 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
-            if (config.storeLocally && config.autoStoreLocallyOnDocumentSave) {
-                await stats.storeLocal(context);
+            if (config.mode !== "project" && config.autoStoreLocallyOnDocumentSave) {
+                await stats.dumpProjectToLocal(context, { backup: config.createLocalBackup });
                 provider.setStats(config, stats);
             }
         })
@@ -97,11 +97,16 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         commands.registerCommand("coderank.storeProjectValues", async () => {
-            if (config.storeLocally) {
-                await stats.storeLocal(context, false);
+            if (config.mode !== "project") {
+                await stats.dumpProjectToLocal(context, {
+                    automatic: false,
+                    backup: config.createLocalBackup,
+                });
                 provider.setStats(config, stats);
             } else {
-                window.showErrorMessage("'coderank.storeLocally' is disabled.");
+                window.showErrorMessage(
+                    "'coderank.mode' is set to 'project', set to 'local' to access local storage"
+                );
             }
         })
     );

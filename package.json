@@ -58,25 +58,30 @@
           "default": "true",
           "description": "Track the values of each typed/pasted character."
         },
-        "coderank.storeLocally": {
-          "type": "boolean",
-          "default": true,
-          "description": "Save local values to local storage. If disabled, local values will not coordinate between different windows, and will be lost when the windows are closed"
+        "coderank.mode": {
+          "type": "string",
+          "enum": [
+            "project",
+            "local",
+            "remote"
+          ],
+          "default": "remote",
+          "description": "FIXME"
         },
         "coderank.autoStoreLocallyOnDocumentSave": {
           "type": "boolean",
           "default": true,
           "description": "Project values saved to local storage on document save"
         },
+        "coderank.createLocalBackup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Save compressed copies of local files"
+        },
         "coderank.loadLocalOnStartup": {
           "type": "boolean",
           "default": true,
           "description": "Read local values from storage when opening a new window"
-        },
-        "coderank.storeRemotely": {
-          "type": "boolean",
-          "default": true,
-          "description": "If disabled, remote values will not be shown in the treeview, and stats will not be pushed nor pulled to and from GitHub"
         }
       }
     },

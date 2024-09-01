@@ -7,8 +7,8 @@ import {
     Event,
 } from "vscode";
 import { CharMap } from "./characters";
-import { Config } from "./config";
-import { Stats, Fields, FieldLocation } from "./stats";
+import { Config, Location } from "./config";
+import { Stats, Fields } from "./stats";
 
 type StatItemInitializationOptions = {
     label: string;
@@ -60,7 +60,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         this.setStats(config, stats);
     }
 
-    private getFieldLocationIndex(location: FieldLocation): number {
+    private getFieldLocationIndex(location: Location): number {
         return location === "project" ? 0 : location === "local" ? 1 : 2;
     }
 
@@ -105,7 +105,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
     }
 
     private buildChildren(
-        location: FieldLocation,
+        location: Location,
         fields: Fields,
         trackCharacters: boolean
     ): StatItem[] {
@@ -143,7 +143,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
                 children: projectChildren,
             }),
         ];
-        if (config.storeLocally) {
+        if (config.mode !== "project") {
             const localChildren = this.buildChildren("local", stats.local, config.trackChars);
             this.data.push(
                 new StatItem({
@@ -155,7 +155,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
                 })
             );
         }
-        if (config.storeRemotely) {
+        if (config.mode === "remote") {
             const remoteChildren = this.buildChildren("remote", stats.remote, config.trackChars);
             this.data.push(
                 new StatItem({
@@ -172,7 +172,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     setFields(
         fields: Fields,
-        location: FieldLocation,
+        location: Location,
         options?: "refreshCharDataOnly" | "refreshAll"
     ): void {
         const { rank, total, added, deleted, chars } = fields;
@@ -194,7 +194,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     setCharData(stats: Stats): void {
         Object.entries(stats).forEach(([key, value]) => {
-            const index = this.getFieldLocationIndex(key as FieldLocation);
+            const index = this.getFieldLocationIndex(key as Location);
             if (this.data[index].children?.length === 4) {
                 this.data[index].children[3] = this.buildCharDataChildren(value.charData.map);
             }
