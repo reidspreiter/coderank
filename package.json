@@ -29,6 +29,10 @@
         "command": "coderank.pushToRemote",
         "title": "Push local values to remote repo",
         "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "coderank.loadBackup",
+        "title": "Load backup file"
       }
     ],
     "views": {
@@ -73,11 +77,6 @@
           "default": true,
           "description": "Project values saved to local storage on document save"
         },
-        "coderank.createLocalBackup": {
-          "type": "boolean",
-          "default": true,
-          "description": "Save compressed copies of local files"
-        },
         "coderank.loadLocalOnStartup": {
           "type": "boolean",
           "default": true,
@@ -101,6 +100,11 @@
           "command": "coderank.pushToRemote",
           "when": "view == coderank",
           "group": "navigation"
+        },
+        {
+          "command": "coderank.loadBackup",
+          "when": "view == coderank",
+          "group": "inline"
         }
       ]
     }

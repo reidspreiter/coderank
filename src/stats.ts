@@ -1,12 +1,15 @@
-import { ExtensionContext, window } from "vscode";
+import { ExtensionContext, window, QuickPickItem, QuickPickItemKind } from "vscode";
 import { CharData, CharMap, combineCharMaps } from "./characters";
 import path from "path";
 import { promises as fs } from "fs";
-import { getYear, getWeek, dynamicSuccessMessage } from "./util";
-import { gzip } from "zlib";
+import { getYear, getWeek } from "./util";
+import { gzip, gunzip } from "zlib";
 import { promisify } from "util";
+import { Mode } from "./config";
 
 const zip = promisify(gzip);
+const unzip = promisify(gunzip);
+
 const RANK_SIZE = 100000;
 
 export type Fields = {
@@ -114,6 +117,14 @@ function buildStatsJSON(year: number, week: number): StatsJSON {
     };
 }
 
+class FileNameItem implements QuickPickItem {
+    label: string;
+
+    constructor(label: string) {
+        this.label = label;
+    }
+}
+
 export class Stats {
     private totalFilename: string = "totalcoderank.json";
     private statsFilename: string;
@@ -132,7 +143,7 @@ export class Stats {
         this.statsFilename = this.makeFileName();
     }
 
-    private makeFileName(year: number = this.year): string {
+    private makeFileName(year: number | string = this.year): string {
         return `coderank${year}.json`;
     }
 
@@ -163,7 +174,7 @@ export class Stats {
         const backupDir = path.join(directory, "backups");
         try {
             await fs.mkdir(backupDir, { recursive: true });
-            const backupPath = path.join(backupDir, `backupcoderank${year}.json`);
+            const backupPath = path.join(backupDir, `coderankbackup${year}.json`);
             await fs.writeFile(backupPath, await zip(JSON.stringify(yearStats)), "utf-8");
         } catch (err) {
             window.showErrorMessage(`Error writing backup file: ${err}`);
@@ -190,7 +201,7 @@ export class Stats {
     private async getYearStats(
         coderankDir: string,
         coderankPath: string,
-        backup: boolean
+        mode: Mode
     ): Promise<StatsJSON> {
         let yearStats = await this.readJSONFile<StatsJSON>(coderankPath);
 
@@ -200,7 +211,7 @@ export class Stats {
             const prevYearStats = await this.readJSONFile<StatsJSON>(prevYearPath);
 
             if (prevYearStats !== null) {
-                if (backup) {
+                if (mode === "local") {
                     await this.writeBackupFile(coderankDir, this.year - 1, prevYearStats);
                 }
                 await this.updateTotalFile(coderankDir, prevYearStats);
@@ -209,7 +220,7 @@ export class Stats {
             yearStats = buildStatsJSON(this.year, this.week);
         } else if (yearStats.weeks.length < this.week) {
             // A new week has started, update backup and total
-            if (backup) {
+            if (mode === "local") {
                 await this.writeBackupFile(coderankDir, this.year, yearStats);
             }
             await this.updateTotalFile(coderankDir, yearStats);
@@ -223,18 +234,18 @@ export class Stats {
 
     async dumpProjectToLocal(
         context: ExtensionContext,
-        options: { automatic?: boolean; backup?: boolean }
+        mode: Mode,
+        automatic: boolean = true
     ): Promise<void> {
         const coderankDir = context.globalStorageUri.fsPath;
         const coderankPath = path.join(coderankDir, this.statsFilename);
-        const { automatic = true, backup = true } = options;
         const projectStatsCopy = this.project;
         this.project = buildFields("base");
         const localStatsCopy = this.local;
 
         try {
             await fs.mkdir(coderankDir, { recursive: true });
-            const yearStats = await this.getYearStats(coderankDir, coderankPath, backup);
+            const yearStats = await this.getYearStats(coderankDir, coderankPath, mode);
 
             yearStats.total = addFields(
                 "json",
@@ -250,7 +261,9 @@ export class Stats {
             );
 
             await fs.writeFile(coderankPath, JSON.stringify(yearStats), "utf-8");
-            dynamicSuccessMessage(`Saved coderank data to ${coderankPath}`, automatic);
+            if (!automatic) {
+                window.showInformationMessage(`Saved coderank data to ${coderankPath}`);
+            }
         } catch (err) {
             this.project = projectStatsCopy;
             this.local = localStatsCopy;
@@ -267,10 +280,64 @@ export class Stats {
                     ...yearStats.total,
                     chars: new CharData(yearStats.total.chars),
                 });
-                window.setStatusBarMessage("Loaded local coderank data", 8000);
             }
         } catch (err) {
             window.showErrorMessage(`Error loading values from local storage: ${err}`);
+        }
+    }
+
+    private async getCoderankFileNames(directory: string): Promise<string[]> {
+        const filenames: string[] = [];
+        const filenamePattern = /^coderank.*\d{4}\.json$/;
+
+        const entries = await fs.readdir(directory, { withFileTypes: true });
+        entries.forEach((entry) => {
+            if (entry.isFile() && filenamePattern.test(entry.name)) {
+                filenames.push(entry.name);
+            }
+        });
+        return filenames;
+    }
+
+    async loadBackup(context: ExtensionContext): Promise<void> {
+        const coderankDir = context.globalStorageUri.fsPath;
+        const backupDir = path.join(coderankDir, "backups");
+        try {
+            await fs.mkdir(backupDir, { recursive: true });
+            const filenames = (await this.getCoderankFileNames(backupDir)).sort();
+
+            if (filenames.length === 0) {
+                window.showWarningMessage(
+                    "Could not find an existing backup file. Backup files are created automatically on a weekly basis, if this is your first week using coderank, it is possible that one hasn't been created yet."
+                );
+                return;
+            }
+
+            const quickPickItems: FileNameItem[] = filenames.map((name) => new FileNameItem(name));
+            const backupFilename = await window.showQuickPick(quickPickItems, {
+                placeHolder: "Select a backup file to load...",
+            });
+
+            if (!backupFilename) {
+                return;
+            }
+
+            const match = backupFilename.label.match(/(\d{4})\.json$/);
+            if (!match) {
+                window.showErrorMessage("Error loading chosen backup file");
+                return;
+            }
+
+            const backupYear = match[1];
+            const backupPath = path.join(backupDir, backupFilename.label);
+            const compressedStats = await fs.readFile(backupPath, "utf-8");
+            const backupStats: string = JSON.parse((await unzip(compressedStats)).toString());
+            const overwritePath = path.join(coderankDir, this.makeFileName(backupYear));
+
+            await fs.writeFile(overwritePath, backupStats, "utf-8");
+            window.showInformationMessage(`Successfully loaded ${backupPath}`);
+        } catch (err) {
+            window.showErrorMessage(`Error loading backup: ${err}`);
         }
     }
 }

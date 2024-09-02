@@ -26,7 +26,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
             if (config.mode !== "project" && config.autoStoreLocallyOnDocumentSave) {
-                await stats.dumpProjectToLocal(context, { backup: config.createLocalBackup });
+                await stats.dumpProjectToLocal(context, config.mode);
                 provider.setStats(config, stats);
             }
         })
@@ -98,15 +98,22 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand("coderank.storeProjectValues", async () => {
             if (config.mode !== "project") {
-                await stats.dumpProjectToLocal(context, {
-                    automatic: false,
-                    backup: config.createLocalBackup,
-                });
+                await stats.dumpProjectToLocal(context, config.mode, false);
                 provider.setStats(config, stats);
             } else {
                 window.showErrorMessage(
                     "'coderank.mode' is set to 'project', set to 'local' to access local storage"
                 );
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        commands.registerCommand("coderank.loadBackup", async () => {
+            if (config.mode === "local") {
+                stats.loadBackup(context);
+            } else {
+                window.showErrorMessage("Backups are only created and loadable in local mode.");
             }
         })
     );

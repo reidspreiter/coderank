@@ -1,5 +1,3 @@
-import { window } from "vscode";
-
 export function getWeek(): number {
     const currentDate = new Date();
     const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
@@ -14,12 +12,4 @@ export function getWeek(): number {
 export function getYear(): number {
     const today = new Date();
     return today.getFullYear();
-}
-
-export function dynamicSuccessMessage(message: string, calledAutomatically: boolean): void {
-    if (calledAutomatically) {
-        window.setStatusBarMessage(message, 8000);
-    } else {
-        window.showInformationMessage(message);
-    }
 }

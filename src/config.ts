@@ -9,7 +9,6 @@ export type Config = {
     trackChars: boolean;
     autoStoreLocallyOnDocumentSave: boolean;
     loadLocalOnStartup: boolean;
-    createLocalBackup: boolean;
     mode: Mode;
 };
 
@@ -21,7 +20,6 @@ export function getConfig(): Config {
         trackChars: config.get<boolean>("trackCharacters", true),
         autoStoreLocallyOnDocumentSave: config.get<boolean>("autoStoreLocallyOnDocumentSave", true),
         loadLocalOnStartup: config.get<boolean>("loadLocalOnStartup", true),
-        createLocalBackup: config.get<boolean>("createLocalBackup", true),
         mode: config.get<Mode>("mode", "remote"),
     };
 }
