@@ -38,8 +38,8 @@ export async function activate(context: ExtensionContext) {
     let countSinceLastCharacterRefresh = 0;
     context.subscriptions.push(
         workspace.onDidChangeTextDocument((event) => {
-            // Do not track non-code events like saving the document
-            if (!event.contentChanges) {
+            // Do not track non-code events like saving the document and console output
+            if (!event.contentChanges || event.document.uri.scheme === "output") {
                 return;
             }
 
@@ -54,7 +54,7 @@ export async function activate(context: ExtensionContext) {
                 } else {
                     stats.project.added += length;
                     if (config.trackChars) {
-                        stats.project.chars.input(change.text);
+                        stats.project.chars.mapText(change.text);
                     }
                 }
                 refreshCounterIncrease += length;
@@ -96,13 +96,13 @@ export async function activate(context: ExtensionContext) {
     );
 
     context.subscriptions.push(
-        commands.registerCommand("coderank.storeProjectValues", async () => {
+        commands.registerCommand("coderank.dumpProjectToLocal", async () => {
             if (config.mode !== "project") {
                 await stats.dumpProjectToLocal(context, config.mode, false);
                 provider.setStats(config, stats);
             } else {
                 window.showErrorMessage(
-                    "'coderank.mode' is set to 'project', set to 'local' to access local storage"
+                    `'coderank.mode' is set to '${config.mode}': set to 'local' or 'remote' to access local storage`
                 );
             }
         })
@@ -113,7 +113,21 @@ export async function activate(context: ExtensionContext) {
             if (config.mode === "local") {
                 stats.loadBackup(context);
             } else {
-                window.showErrorMessage("Backups are only created and loadable in local mode.");
+                window.showErrorMessage(
+                    `'coderank.mode' is set to '${config.mode}': set to 'local' to create and load backups`
+                );
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        commands.registerCommand("coderank.dumpLocalToRemote", async () => {
+            if (config.mode === "remote") {
+                stats.dumpLocalToRemote(context);
+            } else {
+                window.showErrorMessage(
+                    `'coderank.mode' is set to '${config.mode}': set to 'remote' to access remote repository`
+                );
             }
         })
     );

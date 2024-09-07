@@ -21,13 +21,13 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "coderank.storeProjectValues",
+        "command": "coderank.dumpProjectToLocal",
         "title": "Add project values to local storage",
         "icon": "$(desktop-download)"
       },
       {
-        "command": "coderank.pushToRemote",
-        "title": "Push local values to remote repo",
+        "command": "coderank.dumpLocalToRemote",
+        "title": "Add local values to remote repository",
         "icon": "$(cloud-upload)"
       },
       {
@@ -50,17 +50,17 @@
         "coderank.refreshRate": {
           "type": "number",
           "default": 10,
-          "description": "Refresh local values every X characters. Default is 10"
+          "description": "Refresh local values every X characters\nDefault = 10\nSet to 0 to disable automatic refresh"
         },
         "coderank.characterDataRefreshRate": {
           "type:": "number",
           "default": 1000,
-          "description": "Refresh character data every X characters."
+          "description": "Refresh character data every X characters\nDefault = 1000\nSet to 0 to disable automatic refresh"
         },
         "coderank.trackCharacters": {
           "type": "boolean",
           "default": "true",
-          "description": "Track the values of each typed/pasted character."
+          "description": "Track the amount of times each character has been pressed\nDefault = true"
         },
         "coderank.mode": {
           "type": "string",
@@ -70,17 +70,17 @@
             "remote"
           ],
           "default": "remote",
-          "description": "FIXME"
+          "description": "project: data is only stored until the given project window is closed\nlocal: data can be saved to local storage, allowing multiple open windows to coordinate. Backups of local data are created weekly and can be loaded if needed.\nremote: data can be pushed to a remote repository allowing multiple workstations to coordinate. Additionally, data in a remote repository can be presented to the public through solutions like GitHub Pages\nDefault = remote"
         },
         "coderank.autoStoreLocallyOnDocumentSave": {
           "type": "boolean",
           "default": true,
-          "description": "Project values saved to local storage on document save"
+          "description": "Save project data to local storage when a document is saved\nDefault = true"
         },
         "coderank.loadLocalOnStartup": {
           "type": "boolean",
           "default": true,
-          "description": "Read local values from storage when opening a new window"
+          "description": "Read locally stored data when opening a new window\nDefault = true"
         }
       }
     },
@@ -92,12 +92,12 @@
           "group": "navigation"
         },
         {
-          "command": "coderank.storeProjectValues",
+          "command": "coderank.dumpProjectToLocal",
           "when": "view == coderank",
           "group": "navigation"
         },
         {
-          "command": "coderank.pushToRemote",
+          "command": "coderank.dumpLocalToRemote",
           "when": "view == coderank",
           "group": "navigation"
         },
@@ -138,5 +138,8 @@
     "eslint-plugin-prettier": "^5.2.1",
     "prettier": "^3.3.3",
     "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "simple-git": "^3.26.0"
   }
 }

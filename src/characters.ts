@@ -19,7 +19,7 @@ export class CharData {
         this.sortMap();
     }
 
-    input(text: string): void {
+    mapText(text: string): void {
         for (const char of text) {
             if (char === "\r") {
                 continue;

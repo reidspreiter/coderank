@@ -81,7 +81,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         const parent = new StatItem({
             label: "chars",
             iconPath: new ThemeIcon("output"),
-            tooltip: "A list of the amount of times each character has been pressed.",
+            tooltip: "amount of times characters have been pressed",
             children,
             expanded: false,
             contextValue: "characterData",
@@ -114,17 +114,17 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
             new StatItem({
                 label: total.toString(),
                 iconPath: new ThemeIcon("diff-modified"),
-                tooltip: `${location} total`,
+                tooltip: `${location} additions - deletions`,
             }),
             new StatItem({
                 label: added.toString(),
                 iconPath: new ThemeIcon("diff-added"),
-                tooltip: `${location} additions`,
+                tooltip: `${location} character additions`,
             }),
             new StatItem({
                 label: deleted.toString(),
                 iconPath: new ThemeIcon("diff-removed"),
-                tooltip: `${location} deletions`,
+                tooltip: `${location} character deletions`,
             }),
         ];
         if (trackCharacters) {
@@ -139,7 +139,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
             new StatItem({
                 label: stats.project.rank.toString(),
                 iconPath: new ThemeIcon("keyboard"),
-                tooltip: "project rank",
+                tooltip: "project rank (1 rank = 10,000 individual user actions)",
                 children: projectChildren,
             }),
         ];
@@ -149,7 +149,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
                 new StatItem({
                     label: stats.local.rank.toString(),
                     iconPath: new ThemeIcon("device-desktop"),
-                    tooltip: "local rank",
+                    tooltip: "local rank (1 rank = 10,000 individual user actions)",
                     children: localChildren,
                     expanded: false,
                 })
@@ -161,7 +161,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
                 new StatItem({
                     label: stats.remote.rank.toString(),
                     iconPath: new ThemeIcon("cloud"),
-                    tooltip: "remote rank",
+                    tooltip: "remote rank (1 rank = 10,000 individual user actions)",
                     children: remoteChildren,
                     expanded: false,
                 })
