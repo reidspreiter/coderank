@@ -1,7 +1,8 @@
 import { ExtensionContext, window, workspace, commands } from "vscode";
+
 import { getConfig } from "./config";
-import { Stats } from "./stats";
 import { CoderankStatsProvider } from "./provider";
+import { Stats } from "./stats";
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();

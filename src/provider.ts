@@ -6,9 +6,11 @@ import {
     EventEmitter,
     Event,
 } from "vscode";
+
 import { CharMap } from "./characters";
 import { Config, Location } from "./config";
-import { Stats, Fields } from "./stats";
+import { Fields } from "./fields";
+import { Stats } from "./stats";
 
 type StatItemInitializationOptions = {
     label: string;

@@ -1,6 +1,8 @@
 import { promises as fs } from "fs";
 import path from "path";
 
+export const RANK_SIZE = 10000;
+
 export function getDate(): string {
     const now = new Date();
     const year = now.getFullYear();

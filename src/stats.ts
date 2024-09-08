@@ -1,113 +1,26 @@
-import { ExtensionContext, window, QuickPickItem, ProgressLocation, Progress } from "vscode";
-import { CharData, CharMap, combineCharMaps } from "./characters";
-import path from "path";
 import { promises as fs } from "fs";
-import { getYear, getWeek, stringify, readJSONFile, getDirectoryFiles } from "./util";
-import { gzip, gunzip } from "zlib";
+import path from "path";
 import { promisify } from "util";
+import { gzip, gunzip } from "zlib";
+
+import { ExtensionContext, window, QuickPickItem, ProgressLocation } from "vscode";
+
+import { CharData } from "./characters";
+import { getYear, getWeek, stringify, readJSONFile, getDirectoryFiles, RANK_SIZE } from "./common";
 import { Mode } from "./config";
+import {
+    Fields,
+    FieldsJSON,
+    FieldsJSONWeek,
+    FieldsJSONBig,
+    addFields,
+    buildFields,
+    convertFields,
+} from "./fields";
 import { Git } from "./git";
 
 const zip = promisify(gzip);
 const unzip = promisify(gunzip);
-
-const RANK_SIZE = 100000;
-
-export type Fields = {
-    rank: number;
-    total: number;
-    added: number;
-    deleted: number;
-    chars: CharData;
-    rankBuffer: number;
-};
-
-type FieldsJSON = Fields & {
-    chars: CharMap;
-};
-
-type FieldsJSONWeek = Fields & {
-    chars: CharMap;
-    week: number;
-};
-
-type FieldsJSONBig = Fields & {
-    chars: CharMap;
-    total: bigint;
-    added: bigint;
-    deleted: bigint;
-};
-
-type FieldType = {
-    base: Fields;
-    json: FieldsJSON;
-    jsonWeek: FieldsJSONWeek;
-    jsonBig: FieldsJSONBig;
-};
-
-type FieldValues = {
-    base: Partial<Fields>;
-    json: Partial<FieldsJSON>;
-    jsonWeek: Partial<FieldsJSONWeek>;
-    jsonBig: Partial<FieldsJSONBig>;
-};
-
-function buildFields<T extends keyof FieldType>(type: T, options?: FieldValues[T]): FieldType[T] {
-    const defaultFields = {
-        rank: 0,
-        total: type === "jsonBig" ? BigInt(0) : 0,
-        added: type === "jsonBig" ? BigInt(0) : 0,
-        deleted: type === "jsonBig" ? BigInt(0) : 0,
-        rankBuffer: 0,
-        chars: type === "base" ? new CharData() : ({} as CharMap),
-    };
-
-    return {
-        ...defaultFields,
-        ...options,
-    } as FieldType[T];
-}
-
-function addFields<T extends keyof FieldType>(
-    type: T,
-    base: FieldType[T],
-    addend: FieldType[T]
-): FieldType[T] {
-    const { added, deleted, rank, rankBuffer, chars } = addend;
-    base.added += added;
-    base.deleted += deleted;
-    base.total = base.added - base.deleted;
-    base.rank += rank;
-    base.rankBuffer += rankBuffer;
-
-    if (base.rankBuffer >= RANK_SIZE) {
-        base.rankBuffer -= RANK_SIZE;
-        base.rank++;
-    }
-
-    if (type === "base") {
-        base.chars.append(chars.map);
-    } else {
-        (base.chars as CharMap) = combineCharMaps(base.chars as CharMap, chars as CharMap);
-    }
-    return base;
-}
-
-function convertFields<T extends "base" | "json" | "jsonWeek", Y extends keyof FieldType>(
-    to: Y,
-    fields: FieldType[T]
-): FieldType[Y] {
-    const { rank, total, added, deleted, chars, rankBuffer } = fields;
-
-    return {
-        rank,
-        total: to === "jsonBig" ? BigInt(total) : total,
-        added: to === "jsonBig" ? BigInt(added) : added,
-        deleted: to === "jsonBig" ? BigInt(deleted) : deleted,
-        chars: to === "base" ? new CharData(chars as CharMap) : (chars.map ?? chars),
-        rankBuffer,
-    } as FieldType[Y];
-}
 
 type StatsJSON = {
     year: number;
@@ -127,7 +40,7 @@ function addStatsJSON(base: StatsJSON, addend: StatsJSON): StatsJSON {
     base.total = addFields("json", base.total, addend.total);
 
     for (const addendWeek of addend.weeks) {
-        let baseWeek = base.weeks.find((week) => week.week === addendWeek.week);
+        const baseWeek = base.weeks.find((week) => week.week === addendWeek.week);
         if (baseWeek) {
             Object.assign(baseWeek, addFields("jsonWeek", baseWeek, addendWeek));
         } else {
@@ -200,7 +113,7 @@ export class Stats {
             for (const name of filenames) {
                 const yearStats = await readJSONFile<StatsJSON>(path.join(directory, name));
                 if (yearStats) {
-                    let converted = convertFields("jsonBig", yearStats.total);
+                    const converted = convertFields("jsonBig", yearStats.total);
                     totalFields = addFields("jsonBig", totalFields, converted);
                 }
             }
@@ -321,8 +234,8 @@ export class Stats {
             if (filenames.length === 0) {
                 window.showWarningMessage(
                     "Could not find an existing backup file. " +
-                    "Backup files are updated on a weekly basis. " + 
-                    "If this is your first week using coderank, it is possible that one hasn't been created yet."
+                        "Backup files are updated on a weekly basis. " +
+                        "If this is your first week using coderank, it is possible that one hasn't been created yet."
                 );
                 return;
             }

@@ -6,21 +6,51 @@
         "sourceType": "module"
     },
     "plugins": [
-        "@typescript-eslint"
+        "@typescript-eslint",
+        "import",
+        "prettier"
     ],
     "rules": {
         "@typescript-eslint/naming-convention": [
-            "warn",
+            "error",
             {
                 "selector": "import",
                 "format": [ "camelCase", "PascalCase" ]
             }
         ],
-        "@typescript-eslint/semi": "warn",
-        "curly": "warn",
-        "eqeqeq": "warn",
-        "no-throw-literal": "warn",
-        "semi": "off"
+        "@typescript-eslint/semi": "error",
+        "@typescript-eslint/no-explicit-any": "off",
+        "curly": "error",
+        "eqeqeq": "error",
+        "no-throw-literal": "error",
+        "import/order": [
+            "error",
+            {
+                "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+                "pathGroups": [
+                    {
+                        "pattern": "react",
+                        "group": "external",
+                        "position": "before"
+                    }
+                ],
+                "pathGroupsExcludedImportTypes": ["react"],
+                "alphabetize": {
+                    "order": "asc",
+                    "caseInsensitive": true
+                },
+                "newlines-between": "always",
+                "warnOnUnassignedImports": true
+            }
+        ],
+        "prettier/prettier": "error"
+    },
+    "settings": {
+        "import/resolver": {
+            "typescript": {
+                "project": "./tsconfig.json"
+            }
+        }
     },
     "ignorePatterns": [
         "out",

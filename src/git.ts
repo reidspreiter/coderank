@@ -1,8 +1,10 @@
+import { promises as fs } from "fs";
+import path from "path";
+
 import simpleGit from "simple-git";
 import { window, ExtensionContext } from "vscode";
-import path from "path";
-import { promises as fs } from "fs";
-import { getDate } from "./util";
+
+import { getDate } from "./common";
 
 export class Git {
     private constructor(
