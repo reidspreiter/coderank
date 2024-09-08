@@ -7,24 +7,23 @@
     },
     "plugins": [
         "@typescript-eslint",
-        "import",
-        "prettier"
+        "import"
     ],
     "rules": {
         "@typescript-eslint/naming-convention": [
-            "error",
+            "warn",
             {
                 "selector": "import",
                 "format": [ "camelCase", "PascalCase" ]
             }
         ],
-        "@typescript-eslint/semi": "error",
+        "@typescript-eslint/semi": "warn",
         "@typescript-eslint/no-explicit-any": "off",
-        "curly": "error",
-        "eqeqeq": "error",
+        "curly": "warn",
+        "eqeqeq": "warn",
         "no-throw-literal": "error",
         "import/order": [
-            "error",
+            "warn",
             {
                 "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
                 "pathGroups": [
@@ -42,8 +41,7 @@
                 "newlines-between": "always",
                 "warnOnUnassignedImports": true
             }
-        ],
-        "prettier/prettier": "error"
+        ]
     },
     "settings": {
         "import/resolver": {

@@ -1,4 +1,4 @@
-import { CharData, CharMap, combineCharMaps } from "./characters";
+import { CharData, CharMap, addCharMaps } from "./characters";
 import { RANK_SIZE } from "./common";
 
 export type Fields = {
@@ -10,20 +10,26 @@ export type Fields = {
     rankBuffer: number;
 };
 
-export type FieldsJSON = Fields & {
+export type FieldsJSON = {
+    rank: number;
+    total: number;
+    added: number;
+    deleted: number;
     chars: CharMap;
+    rankBuffer: number;
 };
 
-export type FieldsJSONWeek = Fields & {
-    chars: CharMap;
+export type FieldsJSONWeek = FieldsJSON & {
     week: number;
 };
 
-export type FieldsJSONBig = Fields & {
-    chars: CharMap;
+export type FieldsJSONBig = {
+    rank: number;
     total: bigint;
     added: bigint;
     deleted: bigint;
+    chars: CharMap;
+    rankBuffer: number;
 };
 
 type FieldType = {
@@ -33,30 +39,34 @@ type FieldType = {
     jsonBig: FieldsJSONBig;
 };
 
-type FieldValues = {
-    base: Partial<Fields>;
-    json: Partial<FieldsJSON>;
-    jsonWeek: Partial<FieldsJSONWeek>;
-    jsonBig: Partial<FieldsJSONBig>;
-};
-
 export function buildFields<T extends keyof FieldType>(
     type: T,
-    options?: FieldValues[T]
+    options: Partial<FieldType[T]> = {}
 ): FieldType[T] {
-    const defaultFields = {
+    const defaultFields: any = {
         rank: 0,
         total: type === "jsonBig" ? BigInt(0) : 0,
         added: type === "jsonBig" ? BigInt(0) : 0,
         deleted: type === "jsonBig" ? BigInt(0) : 0,
         rankBuffer: 0,
-        chars: type === "base" ? new CharData() : ({} as CharMap),
+        chars: type === "base" ? new CharData() : {},
     };
+
+    if (type === "jsonWeek") {
+        defaultFields.week = 0;
+    }
 
     return {
         ...defaultFields,
         ...options,
     } as FieldType[T];
+}
+
+function add(a: bigint | number, b: bigint | number): bigint | number {
+    if (typeof a === "bigint" || typeof b === "bigint") {
+        return BigInt(a) + BigInt(b);
+    }
+    return a + b;
 }
 
 export function addFields<T extends keyof FieldType>(
@@ -65,23 +75,30 @@ export function addFields<T extends keyof FieldType>(
     addend: FieldType[T]
 ): FieldType[T] {
     const { added, deleted, rank, rankBuffer, chars } = addend;
-    base.added += added;
-    base.deleted += deleted;
-    base.total = base.added - base.deleted;
-    base.rank += rank;
-    base.rankBuffer += rankBuffer;
 
-    if (base.rankBuffer >= RANK_SIZE) {
-        base.rankBuffer -= RANK_SIZE;
-        base.rank++;
+    const sum: any = {
+        rank: base.rank + rank,
+        added: add(base.added, added),
+        deleted: add(base.deleted, deleted),
+        rankBuffer: base.rankBuffer + rankBuffer,
+    };
+    sum.total = sum.added - sum.deleted;
+
+    if (sum.rankBuffer >= RANK_SIZE) {
+        sum.rankBuffer -= RANK_SIZE;
+        sum.rank++;
     }
 
-    if (type === "base") {
-        base.chars.append(chars.map);
-    } else {
-        (base.chars as CharMap) = combineCharMaps(base.chars as CharMap, chars as CharMap);
+    if ("week" in base) {
+        sum.week = base.week;
     }
-    return base;
+
+    sum.chars =
+        type === "base"
+            ? new CharData(addCharMaps(base.chars.map as CharMap, chars.map as CharMap))
+            : addCharMaps(base.chars as CharMap, chars as CharMap);
+
+    return sum as FieldType[T];
 }
 
 export function convertFields<T extends "base" | "json" | "jsonWeek", Y extends keyof FieldType>(
@@ -90,12 +107,19 @@ export function convertFields<T extends "base" | "json" | "jsonWeek", Y extends 
 ): FieldType[Y] {
     const { rank, total, added, deleted, chars, rankBuffer } = fields;
 
-    return {
+    const newFields: any = {
         rank,
         total: to === "jsonBig" ? BigInt(total) : total,
         added: to === "jsonBig" ? BigInt(added) : added,
         deleted: to === "jsonBig" ? BigInt(deleted) : deleted,
-        chars: to === "base" ? new CharData(chars as CharMap) : (chars.map ?? chars),
+        chars:
+            to === "base" ? ("_map" in chars ? chars : new CharData(chars)) : (chars.map ?? chars),
         rankBuffer,
-    } as FieldType[Y];
+    };
+
+    if (to === "jsonWeek") {
+        newFields.week = "week" in fields ? fields.week : 0;
+    }
+
+    return newFields as FieldType[Y];
 }

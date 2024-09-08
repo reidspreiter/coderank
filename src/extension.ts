@@ -7,9 +7,9 @@ import { Stats } from "./stats";
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
 
-    const stats = new Stats();
+    const stats = new Stats(context);
     if (config.loadLocalOnStartup && config.mode !== "project") {
-        await stats.loadLocal(context);
+        await stats.loadLocal();
     }
 
     const provider = new CoderankStatsProvider(config, stats);
@@ -27,7 +27,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
             if (config.mode !== "project" && config.autoStoreLocallyOnDocumentSave) {
-                await stats.dumpProjectToLocal(context, config.mode);
+                await stats.dumpProjectToLocal(config.mode);
                 provider.setStats(config, stats);
             }
         })
@@ -99,7 +99,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand("coderank.dumpProjectToLocal", async () => {
             if (config.mode !== "project") {
-                await stats.dumpProjectToLocal(context, config.mode, false);
+                await stats.dumpProjectToLocal(config.mode, false);
                 provider.setStats(config, stats);
             } else {
                 window.showErrorMessage(
@@ -112,7 +112,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand("coderank.loadBackup", async () => {
             if (config.mode === "local") {
-                stats.loadBackup(context);
+                stats.loadBackup();
             } else {
                 window.showErrorMessage(
                     `'coderank.mode' is set to '${config.mode}': set to 'local' to create and load backups`

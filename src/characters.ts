@@ -2,11 +2,12 @@ export type CharMap = {
     [key: string]: number;
 };
 
-export function combineCharMaps(target: CharMap, source: CharMap): CharMap {
-    for (const [key, val] of Object.entries(source)) {
-        target[key] = (target[key] ?? 0) + val;
+export function addCharMaps(base: CharMap, addend: CharMap): CharMap {
+    const sum = { ...base };
+    for (const [key, val] of Object.entries(addend)) {
+        sum[key] = (sum[key] ?? 0) + val;
     }
-    return target;
+    return sum;
 }
 
 export class CharData {
@@ -40,9 +41,5 @@ export class CharData {
         const entries = Object.entries(this._map).sort(([, val1], [, val2]) => val2 - val1);
         this._map = Object.fromEntries(entries);
         this.lengthWhenLastSorted = this._map.length;
-    }
-
-    append(map: CharMap): void {
-        this._map = combineCharMaps(this._map, map);
     }
 }
