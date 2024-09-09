@@ -3,11 +3,29 @@
   "displayName": "Coderank",
   "description": "Track your typing habbits from anywhere",
   "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reidspreiter/coderank.git"
+  },
   "engines": {
     "vscode": "^1.92.0"
   },
+  "publisher": "reidspreiter",
+  "license": "MIT",
+  "icon": "icon.png",
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "rank",
+    "code",
+    "tracker",
+    "coderank",
+    "data",
+    "type",
+    "typing",
+    "characters",
+    "track"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -123,7 +141,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.7",
     "@types/node": "20.x",
-    "@types/vscode": "^1.93.0",
+    "@types/vscode": "^1.92.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@vscode/test-cli": "^0.0.9",

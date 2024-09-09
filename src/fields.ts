@@ -104,7 +104,7 @@ export function addFields<T extends keyof FieldType>(
 export function convertFields<T extends "base" | "json" | "jsonWeek", Y extends keyof FieldType>(
     to: Y,
     fields: FieldType[T],
-    defaultWeek: number = 0,
+    defaultWeek: number = 0
 ): FieldType[Y] {
     const { rank, total, added, deleted, chars, rankBuffer } = fields;
 
