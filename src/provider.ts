@@ -7,7 +7,7 @@ import {
     Event,
 } from "vscode";
 
-import { CharMap } from "./characters";
+import { CharMap } from "./chars";
 import { Config, Location } from "./config";
 import { Fields } from "./fields";
 import { Stats } from "./stats";

@@ -5,7 +5,7 @@ import { gzip, gunzip } from "zlib";
 
 import { ExtensionContext, window, QuickPickItem, ProgressLocation } from "vscode";
 
-import { CharData } from "./characters";
+import { CharData } from "./chars";
 import { getYear, getWeek, stringify, readJSONFile, getDirectoryFiles, RANK_SIZE } from "./common";
 import { Mode } from "./config";
 import {

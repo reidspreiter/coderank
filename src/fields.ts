@@ -1,4 +1,4 @@
-import { CharData, CharMap, addCharMaps } from "./characters";
+import { CharData, CharMap, addCharMaps } from "./chars";
 import { RANK_SIZE } from "./common";
 
 export type Fields = {
@@ -103,7 +103,8 @@ export function addFields<T extends keyof FieldType>(
 
 export function convertFields<T extends "base" | "json" | "jsonWeek", Y extends keyof FieldType>(
     to: Y,
-    fields: FieldType[T]
+    fields: FieldType[T],
+    defaultWeek: number = 0,
 ): FieldType[Y] {
     const { rank, total, added, deleted, chars, rankBuffer } = fields;
 
@@ -118,7 +119,7 @@ export function convertFields<T extends "base" | "json" | "jsonWeek", Y extends 
     };
 
     if (to === "jsonWeek") {
-        newFields.week = "week" in fields ? fields.week : 0;
+        newFields.week = "week" in fields ? fields.week : defaultWeek;
     }
 
     return newFields as FieldType[Y];

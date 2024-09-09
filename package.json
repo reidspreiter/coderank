@@ -100,11 +100,6 @@
           "command": "coderank.dumpLocalToRemote",
           "when": "view == coderank",
           "group": "navigation"
-        },
-        {
-          "command": "coderank.loadBackup",
-          "when": "view == coderank",
-          "group": "inline"
         }
       ]
     }

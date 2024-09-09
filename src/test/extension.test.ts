@@ -1,31 +1,13 @@
 import * as assert from "assert";
-import exp from "constants";
 
-import * as tmp from "tmp";
 import * as vscode from "vscode";
 
-import { CharData, CharMap, addCharMaps } from "../characters";
-import { RANK_SIZE, stringify, parse } from "../common";
+import { CharData, addCharMaps } from "../chars";
+import { stringify, parse } from "../common";
 import { buildFields, addFields, convertFields, FieldsJSONBig } from "../fields";
-import { Stats } from "../stats";
 
 suite("Coderank Test Suite", () => {
-    vscode.window.showInformationMessage("Start all coderank tests.");
-
-    // let tempDir: string;
-    // let context: any;
-
-    // setup(() => {
-    //     tempDir = tmp.dirSync({ unsafeCleanup: true }).name;
-    //     context = {
-    //         globalStorageUri: vscode.Uri.file(tempDir),
-    //     };
-    // });
-
-    // teardown(() => {
-    //     tempDir = "";
-    //     context = {};
-    // });
+    vscode.window.showInformationMessage("Coderank tests");
 
     suite("buildFields", () => {
         suite("build base", () => {
@@ -260,15 +242,4 @@ suite("Coderank Test Suite", () => {
             assert.deepStrictEqual(parsed, fieldsJSONBig);
         });
     });
-
-    // test("Stats", () => {
-    //     const stats = new Stats(context);
-
-    //     test("updateProjectRank", () => {
-    //         stats.project.rankBuffer = RANK_SIZE + 3;
-    //         stats.updateProjectRank();
-    //         assert.strictEqual(stats.project.rank, 1);
-    //         assert.strictEqual(stats.project.rankBuffer, 3);
-    //     });
-    // });
 });
