@@ -41,7 +41,7 @@ export class Git {
         const branch = await window.showInputBox({
             prompt: "Enter your desired branch name",
             placeHolder: "Branch name",
-            value: context.globalState.get<string>("repoBranch", "main"),
+            value: context.globalState.get<string>("repoBranch", ""),
             ignoreFocusOut: true,
         });
 
