@@ -35,7 +35,7 @@
     "commands": [
       {
         "command": "coderank.refreshProject",
-        "title": "Refresh local values",
+        "title": "Refresh project values",
         "icon": "$(refresh)"
       },
       {
