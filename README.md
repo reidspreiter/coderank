@@ -31,7 +31,7 @@ Install this extension from the VS Code Marketplace (coming soon)
 
 ## Using Coderank
 
-Thank you for installing Coderank! This document covers everything, and a video presentation is available if needed (coming soon).
+Thank you for installing Coderank! This document is the best way to get started, and a video presentation is available if needed (coming soon).
 
 Coderank has three simple modes of operation: `project`, `local`, and `remote`. Each mode adds additional functionality to its predecessor.
 
@@ -73,9 +73,9 @@ In local mode, when any workspace file is saved, project field data is automatic
 
 `<Path-to-VS-Code>/User/globalStorage/reidspreiter.coderank/` 
 
-All VS Code windows contribute data to the same location. Once project data is saved, it is removed from the project section of the Coderank panel and reflected in the local section.
+All VS Code windows contribute data to the same location. Once project fields are saved, they are removed from the project section of the Coderank panel and reflected in the local section.
 
-You can manually add project values by clicking the local storage button in the top right of the panel.
+You can manually add project fields by clicking the local storage button in the top right of the panel.
 
 ![Push to Local Storage](./static/projectToLocal.png)
 
@@ -103,7 +103,7 @@ You can host your web app on [GitHub Pages](https://pages.github.com/) or other 
 
 2. [Create a new repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/quickstart-for-repositories) to store your coderank data. Name it whatever you'd like!
 
-3. Create a GitHub Personal Access Token (PAT). View [this GitHub resource](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens), or the [Settings Keys](#settings-keys) section for a Coderank-specific introduction.
+3. Create a GitHub Personal Access Token (PAT). View [this GitHub resource](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens), or the [Creating a PAT](#creating-a-pat) section for a Coderank-specific introduction.
 
 4. Make note of the branch names in your repository. Pushing to `main` or `master` is encouraged, but Coderank allows you to push to any branch, as long as it exists.
 
@@ -117,7 +117,7 @@ You will be prompted to enter your GitHub username, PAT, repository name, and br
 
 Once these fields are supplied, Coderank clones your repository, adds local data to the repository, pushes the changes to GitHub, and deletes all local files and backups if succesful.
 
-Coderank does not save username or PAT credentials for safety. However, repository and branch names are saved for convenience.
+Coderank does not save username or PAT credentials for security reasons. However, repository and branch names are saved for convenience.
 
 ## Creating a PAT
 
@@ -128,9 +128,9 @@ Coderank can be customized by updating the following settings keys in VS Code's 
 | Key | Default | Description |
 |-----|---------|-------------|
 | `coderank.mode` | `"remote"` | Toggle Coderank mode|
-| `coderank.refreshRate` | `10` | Automatically refresh project data (not including `Characters Pressed`) every `X` characters. Set to 0 to disable automatic refreshing |
-| `coderank.charRefreshRate` | `100` | Automatically refresh project `Characters Pressed` every `X` characters. Set to 0 to disable automatic refreshing |
+| `coderank.refreshRate` | `100` | Automatically refresh project fields (not including `Characters Pressed`) every `X` characters. Set to 0 to disable automatic refresh |
+| `coderank.charRefreshRate` | `100` | Automatically refresh project `Characters Pressed` every `X` characters. Set to 0 to disable automatic refresh |
 | `coderank.trackCharacters` | `true` | Track character values and populate a `Characters Pressed` field |
-| `coderank.autoStore` | `true` | Automatically save project values on document save |
-| `coderank.loadLocalOnStart` | `true` | Load values from local storage when a new window is opened |
+| `coderank.autoStore` | `true` | Automatically save project fields on document save |
+| `coderank.loadLocalOnStart` | `true` | Load fields from local storage when a new window is opened |
 

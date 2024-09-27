@@ -8,7 +8,7 @@ export async function activate(context: ExtensionContext) {
     let config = getConfig();
 
     const stats = new Stats(context);
-    if (config.loadLocalOnStartup && config.mode !== "project") {
+    if (config.loadLocalOnStart && config.mode !== "project") {
         await stats.loadLocal();
     }
 
@@ -26,7 +26,7 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
-            if (config.mode !== "project" && config.autoStoreLocallyOnDocumentSave) {
+            if (config.mode !== "project" && config.autoStore) {
                 await stats.dumpProjectToLocal(config.mode);
                 provider.setStats(config, stats);
             }

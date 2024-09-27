@@ -67,18 +67,18 @@
       "properties": {
         "coderank.refreshRate": {
           "type": "number",
-          "default": 10,
-          "description": "Refresh local values every X characters\nDefault = 10\nSet to 0 to disable automatic refresh"
+          "default": 100,
+          "description": "Automatically refresh project fields (not including `Characters Pressed`) every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
         },
-        "coderank.characterDataRefreshRate": {
+        "coderank.charRefreshRate": {
           "type:": "number",
-          "default": 1000,
-          "description": "Refresh character data every X characters\nDefault = 1000\nSet to 0 to disable automatic refresh"
+          "default": 100,
+          "description": "Automatically refresh project `Characters Pressed` every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
         },
         "coderank.trackCharacters": {
           "type": "boolean",
           "default": "true",
-          "description": "Track the amount of times each character has been pressed\nDefault = true"
+          "description": "Track character values and populate a `Characters Pressed` field. Default = true"
         },
         "coderank.mode": {
           "type": "string",
@@ -88,17 +88,17 @@
             "remote"
           ],
           "default": "remote",
-          "description": "project: data is only stored until the given project window is closed\nlocal: data can be saved to local storage, allowing multiple open windows to coordinate. Backups of local data are created weekly and can be loaded if needed.\nremote: data can be pushed to a remote repository allowing multiple workstations to coordinate. Additionally, data in a remote repository can be presented to the public through solutions like GitHub Pages\nDefault = remote"
+          "description": "Toggle Coderank mode. Default = remote"
         },
-        "coderank.autoStoreLocallyOnDocumentSave": {
+        "coderank.autoStore": {
           "type": "boolean",
           "default": true,
-          "description": "Save project data to local storage when a document is saved\nDefault = true"
+          "description": "Automatically save project fields on document save. Default = true"
         },
-        "coderank.loadLocalOnStartup": {
+        "coderank.loadLocalOnStart": {
           "type": "boolean",
           "default": true,
-          "description": "Read locally stored data when opening a new window\nDefault = true"
+          "description": "Load fields from local storage when a new window is opened. Default = true"
         }
       }
     },
