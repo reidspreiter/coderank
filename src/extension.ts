@@ -43,6 +43,10 @@ export async function activate(context: ExtensionContext) {
                 return;
             }
 
+            if (config.debug) {
+                console.debug(event);
+            }
+
             event.contentChanges.forEach((change) => {
                 const length = change.rangeLength || change.text.length;
 

@@ -9,6 +9,7 @@ export type Config = {
     autoStore: boolean;
     loadLocalOnStart: boolean;
     mode: Mode;
+    debug: boolean;
 };
 
 export function getConfig(): Config {
@@ -19,5 +20,6 @@ export function getConfig(): Config {
         autoStore: config.get<boolean>("autoStore", true),
         loadLocalOnStart: config.get<boolean>("loadLocalOnStart", true),
         mode: config.get<Mode>("mode", "remote"),
+        debug: config.get<boolean>("debug", false),
     };
 }

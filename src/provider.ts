@@ -172,11 +172,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         this.refresh();
     }
 
-    setFields(
-        fields: Fields,
-        location: Location,
-        refreshCharData: boolean = false,
-    ): void {
+    setFields(fields: Fields, location: Location, refreshCharData: boolean = false): void {
         const { rank, total, added, deleted, chars } = fields;
         const dataFields = this.data[this.getFieldLocationIndex(location)];
         dataFields.label = rank.toString();

@@ -94,6 +94,11 @@
           "type": "boolean",
           "default": true,
           "description": "Load fields from local storage when a new window is opened. Default = true"
+        },
+        "coderank.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Logs typing events to the console for debug and development purposes. Default = false"
         }
       }
     },

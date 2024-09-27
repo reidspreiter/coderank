@@ -132,4 +132,5 @@ Coderank can be customized by updating the following settings keys in VS Code's 
 | `coderank.trackCharacters` | `true` | Track character values and populate a `Characters Pressed` field |
 | `coderank.autoStore` | `true` | Automatically save project fields on document save |
 | `coderank.loadLocalOnStart` | `true` | Load fields from local storage when a new window is opened |
+| `coderank.debug` | `false` | Logs typing events to the console for debug and development purposes |
 
