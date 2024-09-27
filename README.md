@@ -103,7 +103,7 @@ You can host your web app on [GitHub Pages](https://pages.github.com/) or other 
 
 2. [Create a new repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/quickstart-for-repositories) to store your coderank data. Name it whatever you'd like!
 
-3. Create a GitHub Personal Access Token (PAT). View [this GitHub resource](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens), or the [Creating a PAT](#creating-a-pat) section for a Coderank-specific introduction.
+3. Create a GitHub Personal Access Token (PAT). View [this GitHub resource](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token), or the [Creating a PAT](#creating-a-pat) section of this document for a Coderank-specific introduction.
 
 4. Make note of the branch names in your repository. Pushing to `main` or `master` is encouraged, but Coderank allows you to push to any branch, as long as it exists.
 
@@ -119,8 +119,6 @@ Once these fields are supplied, Coderank clones your repository, adds local data
 
 By default, Coderank does not save username, PAT, repo, or branch name credentials. However, saving these via VS Code's extension secrets can be enabled with the `coderank.saveCredentials` configuration option.
 
-## Creating a PAT
-
 ## Settings Keys
 
 Coderank can be customized by updating the following settings keys in VS Code's `settings.json`.
@@ -135,3 +133,24 @@ Coderank can be customized by updating the following settings keys in VS Code's 
 | `coderank.loadLocalOnStart` | `true` | Load fields from local storage when a new window is opened |
 | `coderank.debug` | `false` | Logs typing events to the console for debug and development purposes |
 
+## Creating a PAT
+
+Personal access tokens (PATs) allow Coderank to access Github resources on your behalf. Moreover, PATs are secure, and can limit coderank's permissions and the repositories it can access.
+
+Creating a PAT is easy and shouldn't take longer than five minutes. Follow [these steps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) from the Github Docs to get started.
+
+Regarding step 11:
+>Under **Repository access**, select which repositories you want the token to access.
+
+![Repository access](./static/PATRepository.png)
+
+Allow your PAT to only access your Coderank repository
+
+Regarding step 13:
+>Under Permissions, select which permissions to grant the token.
+
+![Contents permission](./static/PATPermissions.png)
+
+Grant your PAT the **Repository permission** of read-and-write access to **Contents**. Your PAT will be given read-only access to **Metadata** by default.
+
+Once you have created your PAT, you are all set! Just make sure to save it somewhere so you have it ready to supply to Coderank when you push local fields to your repository.
