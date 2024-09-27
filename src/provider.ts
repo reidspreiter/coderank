@@ -175,32 +175,21 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
     setFields(
         fields: Fields,
         location: Location,
-        options?: "refreshCharDataOnly" | "refreshAll"
+        refreshCharData: boolean = false,
     ): void {
         const { rank, total, added, deleted, chars } = fields;
         const dataFields = this.data[this.getFieldLocationIndex(location)];
         dataFields.label = rank.toString();
 
         if (dataFields.children !== undefined) {
-            if (options !== "refreshCharDataOnly") {
-                dataFields.children[0].label = total.toString();
-                dataFields.children[1].label = added.toString();
-                dataFields.children[2].label = deleted.toString();
-            }
-            if (options === "refreshCharDataOnly" || options === "refreshAll") {
+            dataFields.children[0].label = total.toString();
+            dataFields.children[1].label = added.toString();
+            dataFields.children[2].label = deleted.toString();
+
+            if (refreshCharData) {
                 dataFields.children[3] = this.buildCharDataChildren(chars.map);
             }
         }
-        this.refresh();
-    }
-
-    setCharData(stats: Stats): void {
-        Object.entries(stats).forEach(([key, value]) => {
-            const index = this.getFieldLocationIndex(key as Location);
-            if (this.data[index].children?.length === 4) {
-                this.data[index].children[3] = this.buildCharDataChildren(value.charData.map);
-            }
-        });
         this.refresh();
     }
 }

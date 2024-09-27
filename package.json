@@ -35,17 +35,17 @@
     "commands": [
       {
         "command": "coderank.refreshProject",
-        "title": "Refresh project values",
+        "title": "Refresh project fields",
         "icon": "$(refresh)"
       },
       {
         "command": "coderank.dumpProjectToLocal",
-        "title": "Add project values to local storage",
+        "title": "Add project fields to local storage",
         "icon": "$(desktop-download)"
       },
       {
         "command": "coderank.dumpLocalToRemote",
-        "title": "Add local values to remote repository",
+        "title": "Add local fields to remote repository",
         "icon": "$(cloud-upload)"
       },
       {
@@ -68,12 +68,7 @@
         "coderank.refreshRate": {
           "type": "number",
           "default": 100,
-          "description": "Automatically refresh project fields (not including `Characters Pressed`) every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
-        },
-        "coderank.charRefreshRate": {
-          "type:": "number",
-          "default": 100,
-          "description": "Automatically refresh project `Characters Pressed` every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
+          "description": "Automatically refresh project fields every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
         },
         "coderank.trackCharacters": {
           "type": "boolean",

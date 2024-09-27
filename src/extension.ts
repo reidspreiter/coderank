@@ -35,16 +35,13 @@ export async function activate(context: ExtensionContext) {
 
     // Use counter instead of modulo to avoid clamping the buffer to be divisible by the refresh rate.
     // If the user manually refreshes, refresh x characters from that point.
-    let countSinceLastRefresh = 0;
-    let countSinceLastCharacterRefresh = 0;
+    let refreshCounter = 0;
     context.subscriptions.push(
         workspace.onDidChangeTextDocument((event) => {
             // Do not track non-code events like saving the document and console output
             if (!event.contentChanges || event.document.uri.scheme === "output") {
                 return;
             }
-
-            let refreshCounterIncrease = 0;
 
             event.contentChanges.forEach((change) => {
                 const length = change.rangeLength || change.text.length;
@@ -58,26 +55,17 @@ export async function activate(context: ExtensionContext) {
                         stats.project.chars.mapText(change.text);
                     }
                 }
-                refreshCounterIncrease += length;
+                refreshCounter += length;
             });
 
             stats.project.total = stats.project.added - stats.project.deleted;
             stats.project.rankBuffer++;
 
             if (config.refreshRate !== 0) {
-                countSinceLastRefresh += refreshCounterIncrease;
-                if (countSinceLastRefresh >= config.refreshRate) {
-                    countSinceLastRefresh = 0;
+                if (refreshCounter >= config.refreshRate) {
+                    refreshCounter = 0;
                     stats.updateProjectRank();
-                    provider.setFields(stats.project, "project");
-                }
-            }
-
-            if (config.charRefreshRate !== 0 && config.trackChars) {
-                countSinceLastCharacterRefresh += refreshCounterIncrease;
-                if (countSinceLastCharacterRefresh >= config.charRefreshRate) {
-                    countSinceLastCharacterRefresh = 0;
-                    provider.setFields(stats.project, "project", "refreshCharDataOnly");
+                    provider.setFields(stats.project, "project", config.trackChars);
                 }
             }
         })
@@ -85,14 +73,9 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         commands.registerCommand("coderank.refreshProject", () => {
-            countSinceLastCharacterRefresh = 0;
-            countSinceLastRefresh = 0;
+            refreshCounter = 0;
             stats.updateProjectRank();
-            if (config.trackChars) {
-                provider.setFields(stats.project, "project", "refreshAll");
-            } else {
-                provider.setFields(stats.project, "project");
-            }
+            provider.setFields(stats.project, "project", config.trackChars);
         })
     );
 
@@ -111,11 +94,11 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         commands.registerCommand("coderank.loadBackup", async () => {
-            if (config.mode === "local") {
+            if (config.mode !== "project") {
                 stats.loadBackup();
             } else {
                 window.showErrorMessage(
-                    `'coderank.mode' is set to '${config.mode}': set to 'local' to create and load backups`
+                    `'coderank.mode' is set to '${config.mode}': set to 'local' or 'remote' to create and load backups`
                 );
             }
         })

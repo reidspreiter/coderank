@@ -128,8 +128,7 @@ Coderank can be customized by updating the following settings keys in VS Code's 
 | Key | Default | Description |
 |-----|---------|-------------|
 | `coderank.mode` | `"remote"` | Toggle Coderank mode|
-| `coderank.refreshRate` | `100` | Automatically refresh project fields (not including `Characters Pressed`) every `X` characters. Set to 0 to disable automatic refresh |
-| `coderank.charRefreshRate` | `100` | Automatically refresh project `Characters Pressed` every `X` characters. Set to 0 to disable automatic refresh |
+| `coderank.refreshRate` | `100` | Automatically refresh project fields every `X` characters. Set to 0 to disable automatic refresh |
 | `coderank.trackCharacters` | `true` | Track character values and populate a `Characters Pressed` field |
 | `coderank.autoStore` | `true` | Automatically save project fields on document save |
 | `coderank.loadLocalOnStart` | `true` | Load fields from local storage when a new window is opened |
