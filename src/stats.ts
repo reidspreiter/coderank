@@ -300,8 +300,8 @@ export class Stats {
         }
     }
 
-    async dumpLocalToRemote(context: ExtensionContext): Promise<void> {
-        const git = await Git.init(context);
+    async dumpLocalToRemote(context: ExtensionContext, saveCredentials: boolean): Promise<void> {
+        const git = await Git.init(context, saveCredentials);
         if (!git) {
             return;
         }
@@ -337,7 +337,9 @@ export class Stats {
 
                     reportProgress(90, `Removing local files`);
                     await this.deleteLocalCoderankFiles(this.coderankDir);
-                    git.saveRepoAndBranch(context);
+                    if (saveCredentials) {
+                        await git.saveCredentials(context);
+                    }
 
                     window.showInformationMessage(
                         `Succesfully pushed local values to ${git.repo}/${git.branch}`

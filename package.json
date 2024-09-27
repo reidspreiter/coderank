@@ -70,6 +70,11 @@
           "default": 100,
           "description": "Automatically refresh project fields every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
         },
+        "coderank.saveCredentials": {
+          "type": "boolean",
+          "default": false,
+          "description": "Save GitHub username and PAT. Default = false"
+        },
         "coderank.trackCharacters": {
           "type": "boolean",
           "default": "true",

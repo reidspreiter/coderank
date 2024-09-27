@@ -111,7 +111,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand("coderank.dumpLocalToRemote", async () => {
             if (config.mode === "remote") {
-                stats.dumpLocalToRemote(context);
+                stats.dumpLocalToRemote(context, config.saveCredentials);
             } else {
                 window.showErrorMessage(
                     `'coderank.mode' is set to '${config.mode}': set to 'remote' to access remote repository`

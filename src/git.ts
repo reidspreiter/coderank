@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 
 import simpleGit from "simple-git";
-import { window, ExtensionContext } from "vscode";
+import { window, ExtensionContext, SecretStorage } from "vscode";
 
 import { getDate } from "./common";
 
@@ -17,10 +17,11 @@ export class Git {
         public remoteCoderankDir: string
     ) {}
 
-    static async init(context: ExtensionContext): Promise<Git | null> {
+    static async init(context: ExtensionContext, saveCredentials: boolean): Promise<Git | null> {
         const username = await window.showInputBox({
-            prompt: "Enter your GitHub username",
+            prompt: `Enter your GitHub username.${saveCredentials ? " If desired, enable credential saving via `coderank.saveCredentials` for faster access." : ""}`,
             placeHolder: "Username",
+            value: (await context.secrets.get("githubUser")) ?? "",
             ignoreFocusOut: true,
         });
 
@@ -28,20 +29,21 @@ export class Git {
             prompt: "Enter your GitHub PAT",
             placeHolder: "Personal access token",
             password: true,
+            value: (await context.secrets.get("githubPAT")) ?? "",
             ignoreFocusOut: true,
         });
 
         const repo = await window.showInputBox({
             prompt: "Enter your coderank repo name",
             placeHolder: "Repository name",
-            value: context.globalState.get<string>("githubRepo", ""),
+            value: (await context.secrets.get("githubRepo")) ?? "",
             ignoreFocusOut: true,
         });
 
         const branch = await window.showInputBox({
             prompt: "Enter your desired branch name",
             placeHolder: "Branch name",
-            value: context.globalState.get<string>("repoBranch", ""),
+            value: (await context.secrets.get("githubBranch")) ?? "",
             ignoreFocusOut: true,
         });
 
@@ -71,9 +73,11 @@ export class Git {
         await git.push("origin", this.branch);
     }
 
-    saveRepoAndBranch(context: ExtensionContext): void {
-        context.globalState.update("githubRepo", this.repo);
-        context.globalState.update("repoBranch", this.branch);
+    async saveCredentials(context: ExtensionContext): Promise<void> {
+        await context.secrets.store("githubUser", this.username);
+        await context.secrets.store("githubPAT", this.token);
+        await context.secrets.store("githubRepo", this.repo);
+        await context.secrets.store("githubBranch", this.branch);
     }
 
     async teardown(): Promise<void> {

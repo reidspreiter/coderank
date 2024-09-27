@@ -117,7 +117,7 @@ You will be prompted to enter your GitHub username, PAT, repository name, and br
 
 Once these fields are supplied, Coderank clones your repository, adds local data to the repository, pushes the changes to GitHub, and deletes all local files and backups if succesful.
 
-Coderank does not save username or PAT credentials for security reasons. However, repository and branch names are saved for convenience.
+By default, Coderank does not save username, PAT, repo, or branch name credentials. However, saving these via VS Code's extension secrets can be enabled with the `coderank.saveCredentials` configuration option.
 
 ## Creating a PAT
 
@@ -128,6 +128,7 @@ Coderank can be customized by updating the following settings keys in VS Code's 
 | Key | Default | Description |
 |-----|---------|-------------|
 | `coderank.mode` | `"remote"` | Toggle Coderank mode|
+| `coderank.saveCredentials` | `false` | Save GitHub username and PAT
 | `coderank.refreshRate` | `100` | Automatically refresh project fields every `X` characters. Set to 0 to disable automatic refresh |
 | `coderank.trackCharacters` | `true` | Track character values and populate a `Characters Pressed` field |
 | `coderank.autoStore` | `true` | Automatically save project fields on document save |
