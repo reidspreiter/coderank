@@ -2,8 +2,14 @@
 
 All notable changes to the "coderank" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## [0.1.0]
 
-## [Unreleased]
+- Credential saving
+- Debug mode
+- Removed `coderank.charRefreshRate`
+- Create local backups in remote mode
 
-- Initial release
+
+## [0.0.1]
+
+- Project, local, and remote modes
