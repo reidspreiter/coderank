@@ -27,7 +27,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
             if (config.mode !== "project" && config.autoStore) {
-                await stats.dumpProjectToLocal(config.mode);
+                await stats.dumpProjectToLocal();
                 provider.setStats(config, stats);
             }
         })
@@ -86,7 +86,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand("coderank.dumpProjectToLocal", async () => {
             if (config.mode !== "project") {
-                await stats.dumpProjectToLocal(config.mode, false);
+                await stats.dumpProjectToLocal(false);
                 provider.setStats(config, stats);
             } else {
                 window.showErrorMessage(

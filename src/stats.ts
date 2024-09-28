@@ -125,7 +125,7 @@ export class Stats {
         }
     }
 
-    private async getYearStats(mode: Mode): Promise<StatsJSON> {
+    private async getYearStats(): Promise<StatsJSON> {
         let yearStats = await readJSONFile<StatsJSON>(this.currFilePath);
 
         if (yearStats === null) {
@@ -134,18 +134,14 @@ export class Stats {
             const prevYearStats = await readJSONFile<StatsJSON>(prevYearPath);
 
             if (prevYearStats !== null) {
-                if (mode === "local") {
-                    await this.writeBackupFile(this.coderankDir, this.year - 1, prevYearStats);
-                    await this.writeTotalFile(this.coderankDir);
-                }
+                await this.writeBackupFile(this.coderankDir, this.year - 1, prevYearStats);
+                await this.writeTotalFile(this.coderankDir);
             }
             yearStats = buildStatsJSON(this.year, this.week);
         } else if (yearStats.weeks.length < this.week) {
             // A new week has started, update backup and total
-            if (mode === "local") {
-                await this.writeBackupFile(this.coderankDir, this.year, yearStats);
-                await this.writeTotalFile(this.coderankDir);
-            }
+            await this.writeBackupFile(this.coderankDir, this.year, yearStats);
+            await this.writeTotalFile(this.coderankDir);
 
             for (let i = yearStats.weeks.length + 1; i <= this.week; i++) {
                 yearStats.weeks.push(buildFields("jsonWeek", { week: i }));
@@ -154,14 +150,14 @@ export class Stats {
         return yearStats;
     }
 
-    async dumpProjectToLocal(mode: Mode, automatic: boolean = true): Promise<void> {
+    async dumpProjectToLocal(automatic: boolean = true): Promise<void> {
         const projectStatsCopy = this.project;
         this.project = buildFields("base");
         const localStatsCopy = this.local;
 
         try {
             await fs.mkdir(this.coderankDir, { recursive: true });
-            const yearStats = await this.getYearStats(mode);
+            const yearStats = await this.getYearStats();
 
             yearStats.total = addFields(
                 "json",
@@ -224,8 +220,7 @@ export class Stats {
             if (filenames.length === 0) {
                 window.showWarningMessage(
                     "Could not find an existing backup file. " +
-                        "Backup files are updated on a weekly basis. " +
-                        "If this is your first week using coderank, it is possible that one hasn't been created yet."
+                    "Backup files are updated on a weekly basis."
                 );
                 return;
             }
@@ -317,7 +312,7 @@ export class Stats {
                 };
 
                 reportProgress(0, "Dumping project to local");
-                await this.dumpProjectToLocal("remote");
+                await this.dumpProjectToLocal();
 
                 try {
                     reportProgress(10, "Writing local total file");
