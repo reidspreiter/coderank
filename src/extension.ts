@@ -6,6 +6,8 @@ import { Stats } from "./models";
 import { CoderankStatsProvider } from "./provider";
 import { getConfig, Logger } from "./services";
 
+export type EventStatus = "normal" | "git" | "conflict";
+
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
     const logger = Logger.getLogger(config.debug);
@@ -49,12 +51,12 @@ export async function activate(context: ExtensionContext) {
     // Use counter instead of modulo to avoid clamping the buffer to be divisible by the refresh rate.
     // If the user manually refreshes, refresh x characters from that point.
     let refreshCounter = 0;
-    let gitActive = false;
+    let status: EventStatus = "normal";
     context.subscriptions.push(
         workspace.onDidChangeTextDocument((event) => {
             const scheme = event.document.uri.scheme;
             if (scheme !== "output") {
-                logger.logTextDocumentChange(event, gitActive);
+                logger.logTextDocumentChange(event, status);
             }
 
             // Do not track non-code events like saving the document or console output
@@ -73,18 +75,18 @@ export async function activate(context: ExtensionContext) {
                     filename === "COMMIT_EDITMSG" ||
                     filename === "git-rebase-todo"
                 ) {
-                    gitActive = true;
+                    status = "git";
                 }
                 return;
             }
 
-            if (gitActive) {
+            if (status === "git") {
                 const change = event.contentChanges[0];
                 if (
                     (change.rangeLength === 1 && change.text.length === 0) ||
                     (change.rangeLength === 0 && change.text.length === 1)
                 ) {
-                    gitActive = false;
+                    status = "normal";
                 } else {
                     return;
                 }
@@ -164,4 +166,4 @@ export async function activate(context: ExtensionContext) {
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }

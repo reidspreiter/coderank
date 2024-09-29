@@ -3,6 +3,7 @@ import path from "path";
 import { window, OutputChannel, TextDocumentChangeEvent } from "vscode";
 
 import { getTimestamp } from "../util/common";
+import { EventStatus } from "../extension"
 
 export class Logger {
     private static logger: Logger;
@@ -40,7 +41,7 @@ export class Logger {
         }
     }
 
-    logTextDocumentChange(event: TextDocumentChangeEvent, gitActive: boolean): void {
+    logTextDocumentChange(event: TextDocumentChangeEvent, status: EventStatus): void {
         if (!this.enabled) {
             return;
         }
@@ -57,7 +58,7 @@ export class Logger {
         const contentChanges = event.contentChanges;
 
         this.log(`scheme: ${scheme}`, 2);
-        this.log(`git: ${gitActive}`, 2);
+        this.log(`status: ${status}`, 2);
         this.log(`changes: ${contentChanges.length}`, 2);
 
         contentChanges.forEach((change, index) => {
@@ -86,7 +87,7 @@ export class Logger {
             this.log("REJECTED: editing 'COMMITEDIT_MSG", 2);
         } else if (filename === "git-rebase-todo") {
             this.log("REJECTED: editing 'git-rebase-todo'", 2);
-        } else if (gitActive) {
+        } else if (status === "git") {
             const change = event.contentChanges[0];
             if (
                 (change.rangeLength === 1 && change.text.length === 0) ||
