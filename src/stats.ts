@@ -220,7 +220,7 @@ export class Stats {
             if (filenames.length === 0) {
                 window.showWarningMessage(
                     "Could not find an existing backup file. " +
-                    "Backup files are updated on a weekly basis."
+                        "Backup files are updated on a weekly basis."
                 );
                 return;
             }

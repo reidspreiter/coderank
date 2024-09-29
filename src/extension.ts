@@ -1,11 +1,15 @@
+import path from "path";
+
 import { ExtensionContext, window, workspace, commands } from "vscode";
 
 import { getConfig } from "./config";
+import { Logger } from "./logger";
 import { CoderankStatsProvider } from "./provider";
 import { Stats } from "./stats";
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
+    const logger = Logger.getLogger(config.debug);
 
     const stats = new Stats(context);
     if (config.loadLocalOnStart && config.mode !== "project") {
@@ -18,7 +22,17 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration("coderank")) {
+                const debug = config.debug;
                 config = getConfig();
+
+                if (debug !== config.debug) {
+                    if (config.debug) {
+                        logger.show();
+                    } else {
+                        logger.hide();
+                    }
+                }
+
                 provider.setStats(config, stats);
             }
         })
@@ -36,15 +50,40 @@ export async function activate(context: ExtensionContext) {
     // Use counter instead of modulo to avoid clamping the buffer to be divisible by the refresh rate.
     // If the user manually refreshes, refresh x characters from that point.
     let refreshCounter = 0;
+    let gitActive = false;
     context.subscriptions.push(
         workspace.onDidChangeTextDocument((event) => {
-            // Do not track non-code events like saving the document and console output
-            if (!event.contentChanges || event.document.uri.scheme === "output") {
+            const scheme = event.document.uri.scheme;
+            if (scheme !== "output") {
+                logger.logTextDocumentChange(event, gitActive);
+            }
+
+            // Do not track non-code events like saving the document or console output
+            if (
+                event.contentChanges.length === 0 ||
+                scheme !== "file" ||
+                path.basename(event.document.fileName) === "COMMIT_EDITMSG" ||
+                path.basename(event.document.fileName) === "git-rebase-todo"
+            ) {
+                // Git actions in VS Code involve deleting entire file contents, pasting
+                // the entirety of new changes, and more. Do not accept any events after
+                // a git scheme is found until a single character is added or deleted
+                if (scheme === "git") {
+                    gitActive = true;
+                }
                 return;
             }
 
-            if (config.debug) {
-                console.debug(event);
+            if (gitActive) {
+                const change = event.contentChanges[0];
+                if (
+                    (change.rangeLength === 1 && change.text.length === 0) ||
+                    (change.rangeLength === 0 && change.text.length === 1)
+                ) {
+                    gitActive = false;
+                } else {
+                    return;
+                }
             }
 
             event.contentChanges.forEach((change) => {
