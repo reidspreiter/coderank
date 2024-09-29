@@ -5,9 +5,18 @@ import { gzip, gunzip } from "zlib";
 
 import { ExtensionContext, window, QuickPickItem, ProgressLocation } from "vscode";
 
+import { Git } from "../services";
+import {
+    getYear,
+    getWeek,
+    stringify,
+    readJSONFile,
+    getDirectoryFiles,
+    RANK_SIZE,
+    Mode,
+} from "../util/common";
+
 import { CharData } from "./chars";
-import { getYear, getWeek, stringify, readJSONFile, getDirectoryFiles, RANK_SIZE } from "./common";
-import { Mode } from "./config";
 import {
     Fields,
     FieldsJSON,
@@ -17,7 +26,6 @@ import {
     buildFields,
     convertFields,
 } from "./fields";
-import { Git } from "./git";
 
 const zip = promisify(gzip);
 const unzip = promisify(gunzip);

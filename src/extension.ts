@@ -2,10 +2,9 @@ import path from "path";
 
 import { ExtensionContext, window, workspace, commands } from "vscode";
 
-import { getConfig } from "./config";
-import { Logger } from "./logger";
+import { Stats } from "./models";
 import { CoderankStatsProvider } from "./provider";
-import { Stats } from "./stats";
+import { getConfig, Logger } from "./services";
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
@@ -69,7 +68,11 @@ export async function activate(context: ExtensionContext) {
                 // Git actions in VS Code involve deleting entire file contents, pasting
                 // the entirety of new changes, and more. Do not accept any events after
                 // a git scheme is found until a single character is added or deleted
-                if (scheme === "git" || filename === "COMMIT_EDITMSG" || filename === "git-rebase-todo") {
+                if (
+                    scheme === "git" ||
+                    filename === "COMMIT_EDITMSG" ||
+                    filename === "git-rebase-todo"
+                ) {
                     gitActive = true;
                 }
                 return;
@@ -161,4 +164,4 @@ export async function activate(context: ExtensionContext) {
     );
 }
 
-export function deactivate() { }
+export function deactivate() {}

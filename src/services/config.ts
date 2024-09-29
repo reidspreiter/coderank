@@ -1,7 +1,6 @@
 import { workspace } from "vscode";
 
-export type Mode = "project" | "local" | "remote";
-export type Location = Mode;
+import { Mode } from "../util/common";
 
 export type Config = {
     refreshRate: number;

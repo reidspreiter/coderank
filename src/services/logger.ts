@@ -2,7 +2,7 @@ import path from "path";
 
 import { window, OutputChannel, TextDocumentChangeEvent } from "vscode";
 
-import { getTimestamp } from "./common";
+import { getTimestamp } from "../util/common";
 
 export class Logger {
     private static logger: Logger;
@@ -64,10 +64,7 @@ export class Logger {
             this.log("");
             this.log(`change ${index + 1} {`, 2);
             const { start, end } = change.range;
-            this.log(
-                `range: ${start.line}:${start.character} -> ${end.line}:${end.character}`,
-                4
-            );
+            this.log(`range: ${start.line}:${start.character} -> ${end.line}:${end.character}`, 4);
             this.log(`deleted: ${change.rangeLength}`, 4);
             if (change.text.length !== 0) {
                 this.log(`added: ${change.text.length} (`, 4);

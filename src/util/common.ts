@@ -2,6 +2,8 @@ import { promises as fs } from "fs";
 import path from "path";
 
 export const RANK_SIZE = 10000;
+export type Mode = "project" | "local" | "remote";
+export type Location = Mode;
 
 export function getDate(): string {
     const now = new Date();
