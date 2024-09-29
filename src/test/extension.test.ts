@@ -2,9 +2,9 @@ import * as assert from "assert";
 
 import * as vscode from "vscode";
 
-import { CharData, addCharMaps } from "../chars";
-import { stringify, parse } from "../common";
-import { buildFields, addFields, convertFields, FieldsJSONBig } from "../fields";
+import { CharData, addCharMaps } from "../models/chars";
+import { buildFields, addFields, convertFields, FieldsJSONBig } from "../models/fields";
+import { stringify, parse } from "../util/common";
 
 suite("Coderank Test Suite", () => {
     vscode.window.showInformationMessage("Coderank tests");

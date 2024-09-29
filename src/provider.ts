@@ -7,10 +7,9 @@ import {
     Event,
 } from "vscode";
 
-import { CharMap } from "./chars";
-import { Config, Location } from "./config";
-import { Fields } from "./fields";
-import { Stats } from "./stats";
+import { CharMap, Fields, Stats } from "./models";
+import { Config } from "./services/config";
+import { Location } from "./util/common";
 
 type StatItemInitializationOptions = {
     label: string;

@@ -1,5 +1,6 @@
+import { RANK_SIZE } from "../util/common";
+
 import { CharData, CharMap, addCharMaps } from "./chars";
-import { RANK_SIZE } from "./common";
 
 export type Fields = {
     rank: number;
