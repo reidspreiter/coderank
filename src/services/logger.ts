@@ -2,8 +2,8 @@ import path from "path";
 
 import { window, OutputChannel, TextDocumentChangeEvent } from "vscode";
 
+import { EventStatus } from "../extension";
 import { getTimestamp } from "../util/common";
-import { EventStatus } from "../extension"
 
 export class Logger {
     private static logger: Logger;
@@ -82,28 +82,54 @@ export class Logger {
         if (contentChanges.length === 0) {
             this.log("REJECTED: no content changes", 2);
         } else if (scheme !== "file") {
+            if (status !== "git" && scheme === "git") {
+                this.log("New status: 'git'", 2);
+            }
             this.log("REJECTED: scheme is not 'file'", 2);
         } else if (filename === "COMMIT_EDITMSG") {
             this.log("REJECTED: editing 'COMMITEDIT_MSG", 2);
         } else if (filename === "git-rebase-todo") {
             this.log("REJECTED: editing 'git-rebase-todo'", 2);
+        } else if (status === "conflict") {
+            this.log("REJECTED: resolving merge conflict", 2);
         } else if (status === "git") {
             const change = event.contentChanges[0];
-            if (
-                (change.rangeLength === 1 && change.text.length === 0) ||
-                (change.rangeLength === 0 && change.text.length === 1)
-            ) {
-                this.log("Found single character event. Git operations finished", 2);
-                this.log("ACCEPTED", 2);
+            if (change.text.length === 0) {
+                if (change.rangeLength !== 1) {
+                    this.log("REJECTED: performing git operations", 2);
+                } else {
+                    this.log("New status: 'normal'", 2);
+                    this.log("ACCEPTED", 2);
+                }
             } else {
-                this.log("REJECTED: performing git operations", 2);
+                const { start, end } = change.range;
+                if (end.line - start.line !== 0 || end.character - start.character !== 0) {
+                    this.log("REJECTED: performing git operations", 2);
+                } else {
+                    this.log("New status: 'normal'", 2);
+                    this.log("ACCEPTED", 2);
+                }
             }
         } else {
-            this.log("ACCEPTED", 2);
-        }
+            const change = event.contentChanges[0];
+            const conflictRegex = /<<<<<<< HEAD\n(.*?)=======\n(.*?)>>>>>>> .*?/s;
+            if (change.text.match(conflictRegex)) {
+                this.log("New status: 'conflict'", 2);
+                this.log("REJECTED: resolving merge conflict");
+            } else if (change.text.length) {
+                const { start, end } = change.range;
+                if (end.line - start.line !== 0 || end.character - start.character !== 0) {
+                    this.log("REJECTED: invalid paste with non-zero range difference", 2);
+                } else {
+                    this.log("ACCEPTED", 2);
+                }
+            } else {
+                this.log("ACCEPTED", 2);
+            }
 
-        this.log("<<< End Event >>>");
-        this.label = null;
-        this.log("");
+            this.log("<<< End Event >>>");
+            this.label = null;
+            this.log("");
+        }
     }
 }
