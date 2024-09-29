@@ -59,16 +59,17 @@ export async function activate(context: ExtensionContext) {
             }
 
             // Do not track non-code events like saving the document or console output
+            const filename = path.basename(event.document.fileName);
             if (
                 event.contentChanges.length === 0 ||
                 scheme !== "file" ||
-                path.basename(event.document.fileName) === "COMMIT_EDITMSG" ||
-                path.basename(event.document.fileName) === "git-rebase-todo"
+                filename === "COMMIT_EDITMSG" ||
+                filename === "git-rebase-todo"
             ) {
                 // Git actions in VS Code involve deleting entire file contents, pasting
                 // the entirety of new changes, and more. Do not accept any events after
                 // a git scheme is found until a single character is added or deleted
-                if (scheme === "git") {
+                if (scheme === "git" || filename === "COMMIT_EDITMSG" || filename === "git-rebase-todo") {
                     gitActive = true;
                 }
                 return;
@@ -160,4 +161,4 @@ export async function activate(context: ExtensionContext) {
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }

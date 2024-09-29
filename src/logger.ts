@@ -2,6 +2,8 @@ import path from "path";
 
 import { window, OutputChannel, TextDocumentChangeEvent } from "vscode";
 
+import { getTimestamp } from "./common";
+
 export class Logger {
     private static logger: Logger;
     private outputChannel: OutputChannel;
@@ -43,65 +45,67 @@ export class Logger {
             return;
         }
 
-        setImmediate(() => {
-            const filename = path.basename(event.document.fileName);
-            this.label = filename;
-            this.log("<<< Text Document Change Event >>>");
+        this.label = getTimestamp();
+        this.log("<<< Text Document Change Event >>>");
 
-            const scheme = event.document.uri.scheme;
-            const contentChanges = event.contentChanges;
+        const filename = path.basename(event.document.fileName);
+        this.log(`name: ${filename}`, 2);
+        this.log(`path: ${event.document.fileName}`, 2);
+        this.log("");
 
-            this.log(`scheme: ${scheme}`, 2);
-            this.log(`git: ${gitActive}`, 2);
-            this.log(`changes: ${contentChanges.length}`, 2);
+        const scheme = event.document.uri.scheme;
+        const contentChanges = event.contentChanges;
 
-            contentChanges.forEach((change, index) => {
-                this.log("");
-                this.log(`change ${index + 1} {`, 2);
-                const { start, end } = change.range;
-                this.log(
-                    `range: ${start.line}:${start.character} -> ${end.line}:${end.character}`,
-                    4
-                );
-                this.log(`deleted: ${change.rangeLength}`, 4);
-                if (change.text.length !== 0) {
-                    this.log(`added: ${change.text.length} (`, 4);
-                    change.text.split("\n").forEach((line) => this.log(line, 6));
-                    this.log(")", 4);
-                } else {
-                    this.log(`added: ${change.text.length}`, 4);
-                }
+        this.log(`scheme: ${scheme}`, 2);
+        this.log(`git: ${gitActive}`, 2);
+        this.log(`changes: ${contentChanges.length}`, 2);
 
-                this.log(`}`, 2);
-                this.log("");
-            });
-
-            if (contentChanges.length === 0) {
-                this.log("REJECTED: no content changes", 2);
-            } else if (scheme !== "file") {
-                this.log("REJECTED: scheme is not 'file'", 2);
-            } else if (filename === "COMMIT_EDITMSG") {
-                this.log("REJECTED: editing 'COMMITEDIT_MSG", 2);
-            } else if (filename === "git-rebase-todo") {
-                this.log("REJECTED: editing 'git-rebase-todo'", 2);
-            } else if (gitActive) {
-                const change = event.contentChanges[0];
-                if (
-                    (change.rangeLength === 1 && change.text.length === 0) ||
-                    (change.rangeLength === 0 && change.text.length === 1)
-                ) {
-                    this.log("Found single character event. Git operations finished", 2);
-                    this.log("ACCEPTED", 2);
-                } else {
-                    this.log("REJECTED: performing git operations", 2);
-                }
+        contentChanges.forEach((change, index) => {
+            this.log("");
+            this.log(`change ${index + 1} {`, 2);
+            const { start, end } = change.range;
+            this.log(
+                `range: ${start.line}:${start.character} -> ${end.line}:${end.character}`,
+                4
+            );
+            this.log(`deleted: ${change.rangeLength}`, 4);
+            if (change.text.length !== 0) {
+                this.log(`added: ${change.text.length} (`, 4);
+                change.text.split("\n").forEach((line) => this.log(line, 6));
+                this.log(")", 4);
             } else {
-                this.log("ACCEPTED", 2);
+                this.log(`added: ${change.text.length}`, 4);
             }
 
-            this.log("<<< End Event >>>");
-            this.label = null;
+            this.log(`}`, 2);
             this.log("");
         });
+
+        if (contentChanges.length === 0) {
+            this.log("REJECTED: no content changes", 2);
+        } else if (scheme !== "file") {
+            this.log("REJECTED: scheme is not 'file'", 2);
+        } else if (filename === "COMMIT_EDITMSG") {
+            this.log("REJECTED: editing 'COMMITEDIT_MSG", 2);
+        } else if (filename === "git-rebase-todo") {
+            this.log("REJECTED: editing 'git-rebase-todo'", 2);
+        } else if (gitActive) {
+            const change = event.contentChanges[0];
+            if (
+                (change.rangeLength === 1 && change.text.length === 0) ||
+                (change.rangeLength === 0 && change.text.length === 1)
+            ) {
+                this.log("Found single character event. Git operations finished", 2);
+                this.log("ACCEPTED", 2);
+            } else {
+                this.log("REJECTED: performing git operations", 2);
+            }
+        } else {
+            this.log("ACCEPTED", 2);
+        }
+
+        this.log("<<< End Event >>>");
+        this.label = null;
+        this.log("");
     }
 }
