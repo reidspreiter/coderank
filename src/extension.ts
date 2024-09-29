@@ -48,61 +48,69 @@ export async function activate(context: ExtensionContext) {
         })
     );
 
-    // Use counter instead of modulo to avoid clamping the buffer to be divisible by the refresh rate.
-    // If the user manually refreshes, refresh x characters from that point.
     let refreshCounter = 0;
     let status: EventStatus = "normal";
+    const conflictRegex = /<<<<<<< HEAD\n(.*?)=======\n(.*?)>>>>>>> .*?/s;
     context.subscriptions.push(
         workspace.onDidChangeTextDocument((event) => {
             const scheme = event.document.uri.scheme;
-            if (scheme !== "output") {
-                logger.logTextDocumentChange(event, status);
+            if (scheme === "output") {
+                // logger scheme is "output", do this to avoid endless loop
+                return;
             }
+
+            logger.logTextDocumentChange(event, status);
 
             // Do not track non-code events like saving the document or console output
             const filename = path.basename(event.document.fileName);
-            if (
-                event.contentChanges.length === 0 ||
-                scheme !== "file" ||
-                filename === "COMMIT_EDITMSG" ||
-                filename === "git-rebase-todo"
-            ) {
-                // Git actions in VS Code involve deleting entire file contents, pasting
-                // the entirety of new changes, and more. Do not accept any events after
-                // a git scheme is found until a single character is added or deleted
-                if (
-                    scheme === "git" ||
-                    filename === "COMMIT_EDITMSG" ||
-                    filename === "git-rebase-todo"
-                ) {
+            if (event.contentChanges.length === 0 || scheme !== "file") {
+                if (scheme === "git") {
                     status = "git";
                 }
                 return;
             }
 
-            if (status === "git") {
+            if (filename === "COMMIT_EDITMSG" || filename === "git-rebase-todo") {
+                status = "git";
+                return;
+            }
+
+            if (status === "conflict") {
+                return;
+            } else if (status === "git") {
                 const change = event.contentChanges[0];
-                if (
-                    (change.rangeLength === 1 && change.text.length === 0) ||
-                    (change.rangeLength === 0 && change.text.length === 1)
-                ) {
-                    status = "normal";
+                if (change.text.length === 0) {
+                    if (change.rangeLength !== 1) {
+                        return;
+                    }
                 } else {
-                    return;
+                    const { start, end } = change.range;
+                    if (end.line - start.line !== 0 || end.character - start.character !== 0) {
+                        return;
+                    }
                 }
+                status = "normal";
             }
 
             event.contentChanges.forEach((change) => {
-                const length = change.rangeLength || change.text.length;
+                // rangeLength tracks the amount of deleted characters
+                const length = change.text.length || change.rangeLength;
 
-                // if rangeLength is not 0, a mass content deletion the size of rangeLength occured
-                if (change.rangeLength) {
-                    stats.project.deleted += length;
-                } else {
+                if (change.text.length) {
+                    if (change.text.match(conflictRegex)) {
+                        status = "conflict";
+                        return;
+                    }
+                    const { start, end } = change.range;
+                    if (end.line - start.line !== 0 || end.character - start.character !== 0) {
+                        return;
+                    }
                     stats.project.added += length;
                     if (config.trackChars) {
                         stats.project.chars.mapText(change.text);
                     }
+                } else {
+                    stats.project.deleted += length;
                 }
                 refreshCounter += length;
             });
