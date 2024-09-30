@@ -2,6 +2,11 @@
 
 All notable changes to the "coderank" extension will be documented in this file.
 
+## [0.2.0]
+
+- Enhanced event logger
+- Stricter event checks to prevent git actions from being tracked
+
 ## [0.1.0]
 
 - Credential saving
