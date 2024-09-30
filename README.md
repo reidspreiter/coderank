@@ -10,9 +10,9 @@
     Curious how many semicolons you typed last week? What about double quotes over the past five years? Want to visualize all your coding data in one place from anywhere? How about present it on your GitHub profile? This extension is for you.
     <br>
     <br>
-    <a href="https://github.com/reidspreiter/coderank/issues">Request a Feature</a>
+    <a href="https://github.com/reidspreiter/coderank/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.md&title=">Request a Feature</a>
     .
-    <a href="https://github.com/reidspreiter/coderank/issues">Report a Bug</a>
+    <a href="https://github.com/reidspreiter/coderank/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=">Report a Bug</a>
 </p>
 
 ## Installation
@@ -61,6 +61,7 @@ Fields are empty at first, but they update automatically after a set amount of t
 
 ![Refresh Button](./static/refresh.png)
 
+Coderank includes checks to prevent events from being wrongfully tracked or ignored. However, a user's extensions and other unknown factors could slip by these checks. If an issue occurs, please [report the bug](https://github.com/reidspreiter/coderank/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=).
 
 
 ### Local Mode
