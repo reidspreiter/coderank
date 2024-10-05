@@ -8,16 +8,18 @@ import { getTimestamp } from "../util/common";
 export class Logger {
     private static logger: Logger;
     private outputChannel: OutputChannel;
-    private enabled: boolean;
+    private enabled: boolean = false;
     private label: string | null = null;
 
-    private constructor(debugEnabled: boolean) {
+    private constructor(debugEnabled: boolean | undefined) {
         this.outputChannel = window.createOutputChannel("Coderank");
-        this.enabled = debugEnabled;
+        if (debugEnabled !== undefined) {
+            this.enabled = debugEnabled;
+        }
         this.log("Coderank has been activated");
     }
 
-    static getLogger(debugEnabled: boolean): Logger {
+    static getLogger(debugEnabled: boolean | undefined = undefined): Logger {
         if (!Logger.logger) {
             Logger.logger = new Logger(debugEnabled);
         }
@@ -33,9 +35,12 @@ export class Logger {
         this.enabled = false;
     }
 
-    private log(message: string, indent: number = 0) {
+    log(message: string, indent: number = 0) {
+        if (!this.enabled) {
+            return;
+        }
         if (this.label === null) {
-            this.outputChannel.appendLine(`${" ".repeat(indent)}${message}`);
+            this.outputChannel.appendLine(`[${getTimestamp()}]${" ".repeat(indent + 2)}${message}`);
         } else {
             this.outputChannel.appendLine(`[${this.label}]${" ".repeat(indent + 2)}${message}`);
         }
