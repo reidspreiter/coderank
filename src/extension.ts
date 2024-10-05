@@ -2,17 +2,22 @@ import path from "path";
 
 import { ExtensionContext, window, workspace, commands } from "vscode";
 
-import { Stats } from "./models";
 import { CoderankStatsProvider } from "./provider";
 import { getConfig, Logger } from "./services";
+import { StatsManager } from "./stats";
 
 export type EventStatus = "normal" | "git" | "conflict";
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
-    const logger = Logger.getLogger(config.debug);
+    const logger = Logger.getLogger();
+    if (config.debug) {
+        logger.show();
+    }
 
-    const stats = new Stats(context);
+    const stats = new StatsManager(context);
+    stats.updateLanguage(window.activeTextEditor);
+
     if (config.loadLocalOnStart && config.mode !== "project") {
         await stats.loadLocal();
     }
@@ -33,11 +38,12 @@ export async function activate(context: ExtensionContext) {
                         logger.hide();
                     }
                 }
-
                 provider.setStats(config, stats);
             }
         })
     );
+
+    context.subscriptions.push(window.onDidChangeActiveTextEditor(stats.updateLanguage));
 
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
@@ -92,38 +98,35 @@ export async function activate(context: ExtensionContext) {
                 status = "normal";
             }
 
-            event.contentChanges.forEach((change) => {
-                // rangeLength tracks the amount of deleted characters
-                const length = change.text.length || change.rangeLength;
+            const changes = event.contentChanges.length;
+            const change = event.contentChanges[0];
 
-                if (change.text.length) {
-                    if (change.text.match(conflictRegex)) {
-                        status = "conflict";
-                        return;
-                    }
-                    const { start, end } = change.range;
-                    if (end.line - start.line !== 0 || end.character - start.character !== 0) {
-                        return;
-                    }
-                    stats.project.added += length;
-                    if (config.trackChars) {
-                        stats.project.chars.mapText(change.text);
-                    }
-                } else {
-                    stats.project.deleted += length;
+            // rangeLength tracks the amount of deleted characters
+            const length = change.text.length || change.rangeLength;
+
+            if (change.text.length) {
+                if (change.text.match(conflictRegex)) {
+                    status = "conflict";
+                    return;
                 }
-                refreshCounter += length;
-            });
-
-            stats.project.total = stats.project.added - stats.project.deleted;
-            stats.project.rankBuffer++;
+                const { start, end } = change.range;
+                if (end.line - start.line !== 0 || end.character - start.character !== 0) {
+                    return;
+                }
+                const chars = config.trackChars ? change.text.repeat(changes) : "";
+                stats.handleAddition(length * changes, chars);
+            } else {
+                stats.handleDeletion(length * changes);
+            }
+            refreshCounter += length;
 
             if (config.refreshRate !== 0) {
                 if (refreshCounter >= config.refreshRate) {
                     refreshCounter = 0;
-                    stats.updateProjectRank();
                     provider.setFields(stats.project, "project", config.trackChars);
                 }
+            } else {
+                refreshCounter = 0;
             }
         })
     );
@@ -131,7 +134,6 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand("coderank.refreshProject", () => {
             refreshCounter = 0;
-            stats.updateProjectRank();
             provider.setFields(stats.project, "project", config.trackChars);
         })
     );
@@ -174,4 +176,4 @@ export async function activate(context: ExtensionContext) {
     );
 }
 
-export function deactivate() { }
+export function deactivate() {}
