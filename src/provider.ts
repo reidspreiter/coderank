@@ -7,8 +7,9 @@ import {
     Event,
 } from "vscode";
 
-import { CharMap, Fields, Stats } from "./models";
+import * as s from "./schemata";
 import { Config } from "./services/config";
+import { StatsManager } from "./stats";
 import { Location } from "./util/common";
 
 type StatItemInitializationOptions = {
@@ -57,7 +58,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     private data: StatItem[] = [];
 
-    constructor(config: Config, stats: Stats) {
+    constructor(config: Config, stats: StatsManager) {
         this.setStats(config, stats);
     }
 
@@ -65,7 +66,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         return location === "project" ? 0 : location === "local" ? 1 : 2;
     }
 
-    private buildCharDataChildren(charData: CharMap): StatItem {
+    private buildCharDataChildren(charData: s.CharMap): StatItem {
         let children = undefined;
         const entries = Object.entries(charData);
         if (entries.length !== 0) {
@@ -107,13 +108,13 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     private buildChildren(
         location: Location,
-        fields: Fields,
+        fields: s.Fields,
         trackCharacters: boolean
     ): StatItem[] {
-        const { total, added, deleted, chars } = fields;
+        const { net, added, deleted, chars } = fields;
         const children = [
             new StatItem({
-                label: total.toString(),
+                label: net.toString(),
                 iconPath: new ThemeIcon("diff-modified"),
                 tooltip: `${location} additions - deletions`,
             }),
@@ -129,12 +130,12 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
             }),
         ];
         if (trackCharacters) {
-            children.push(this.buildCharDataChildren(chars.map));
+            children.push(this.buildCharDataChildren(chars));
         }
         return children;
     }
 
-    setStats(config: Config, stats: Stats): void {
+    setStats(config: Config, stats: StatsManager): void {
         const projectChildren = this.buildChildren("project", stats.project, config.trackChars);
         this.data = [
             new StatItem({
@@ -157,32 +158,29 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
             );
         }
         if (config.mode === "remote") {
-            const remoteChildren = this.buildChildren("remote", stats.remote, config.trackChars);
             this.data.push(
                 new StatItem({
-                    label: stats.remote.rank.toString(),
+                    label: stats.remote.toString(),
                     iconPath: new ThemeIcon("cloud"),
                     tooltip: "remote rank (1 rank = 10,000 individual user actions)",
-                    children: remoteChildren,
-                    expanded: false,
                 })
             );
         }
         this.refresh();
     }
 
-    setFields(fields: Fields, location: Location, refreshCharData: boolean = false): void {
-        const { rank, total, added, deleted, chars } = fields;
+    setFields(fields: s.Fields, location: Location, refreshCharData: boolean = false): void {
+        const { rank, net, added, deleted, chars } = fields;
         const dataFields = this.data[this.getFieldLocationIndex(location)];
         dataFields.label = rank.toString();
 
         if (dataFields.children !== undefined) {
-            dataFields.children[0].label = total.toString();
+            dataFields.children[0].label = net.toString();
             dataFields.children[1].label = added.toString();
             dataFields.children[2].label = deleted.toString();
 
             if (refreshCharData) {
-                dataFields.children[3] = this.buildCharDataChildren(chars.map);
+                dataFields.children[3] = this.buildCharDataChildren(chars);
             }
         }
         this.refresh();
