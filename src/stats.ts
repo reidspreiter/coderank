@@ -3,60 +3,16 @@ import path from "path";
 import { promisify } from "util";
 import { gzip, gunzip } from "zlib";
 
-import { ExtensionContext, window, QuickPickItem, ProgressLocation } from "vscode";
+import { ExtensionContext, window, QuickPickItem, ProgressLocation, TextEditor } from "vscode";
 
-import { Git } from "../services";
-import {
-    getYear,
-    getWeek,
-    stringify,
-    readJSONFile,
-    getDirectoryFiles,
-    RANK_SIZE,
-    Mode,
-} from "../util/common";
-
-import { CharData } from "./chars";
-import {
-    Fields,
-    FieldsJSON,
-    FieldsJSONWeek,
-    FieldsJSONBig,
-    addFields,
-    buildFields,
-    convertFields,
-} from "./fields";
+import * as s from "./schemata";
+import { Git, Logger } from "./services";
+import { getYear, getWeek, getDirectoryFiles, RANK_SIZE } from "./util/common";
 
 const zip = promisify(gzip);
 const unzip = promisify(gunzip);
 
-type StatsJSON = {
-    year: number;
-    total: FieldsJSON;
-    weeks: FieldsJSONWeek[];
-};
-
-function buildStatsJSON(year: number, week: number): StatsJSON {
-    return {
-        year,
-        total: buildFields("json"),
-        weeks: Array.from({ length: week }, (_, i) => buildFields("jsonWeek", { week: i + 1 })),
-    };
-}
-
-function addStatsJSON(base: StatsJSON, addend: StatsJSON): StatsJSON {
-    base.total = addFields("json", base.total, addend.total);
-
-    for (const addendWeek of addend.weeks) {
-        const baseWeek = base.weeks.find((week) => week.week === addendWeek.week);
-        if (baseWeek) {
-            Object.assign(baseWeek, addFields("jsonWeek", baseWeek, addendWeek));
-        } else {
-            base.weeks.push(addendWeek);
-        }
-    }
-    return base;
-}
+const logger = Logger.getLogger();
 
 class FileNameItem implements QuickPickItem {
     label: string;
@@ -66,24 +22,26 @@ class FileNameItem implements QuickPickItem {
     }
 }
 
-export class Stats {
+export class StatsManager {
     private totalFilename: string = "totalcoderank.json";
     private coderankFilePattern: RegExp = /^coderank.*\d{4}\.json$/;
     private coderankDir: string;
     private currFilePath: string;
+    private currLanguage: string;
     private week: number;
     private year: number;
-    project: Fields;
-    local: Fields;
-    remote: Fields;
+    project: s.WeeklyFields;
+    local: s.Fields;
+    remote: number;
 
     constructor(context: ExtensionContext) {
         this.coderankDir = context.globalStorageUri.fsPath;
-        this.project = buildFields("base");
-        this.local = buildFields("base");
-        this.remote = buildFields("base");
         this.week = getWeek();
         this.year = getYear();
+        this.project = s.WeeklyFieldsSchema.parse({ week: this.week });
+        this.local = s.FieldsSchema.parse({});
+        this.remote = 0;
+        this.currLanguage = "unknown";
         this.currFilePath = path.join(this.coderankDir, this.getFileName());
     }
 
@@ -91,23 +49,60 @@ export class Stats {
         return `coderank${year}.json`;
     }
 
-    updateProjectRank(): void {
-        if (this.project.rankBuffer >= RANK_SIZE) {
-            this.project.rankBuffer -= RANK_SIZE;
-            this.project.rank++;
+    handleDeletion(deleted: number): void {
+        this.project.net -= deleted;
+        this.project.deleted += deleted;
+        const languageFields = s.findLanguage(this.project.languages, this.currLanguage);
+        if (languageFields) {
+            languageFields.deleted += deleted;
+        } else {
+            this.project.languages.push(
+                s.LanguageWithCharsSchema.parse({ language: this.currLanguage, deleted: deleted })
+            );
         }
+        this.incrementRank();
     }
 
-    private async writeBackupFile(
-        directory: string,
-        year: number,
-        yearStats: StatsJSON
-    ): Promise<void> {
+    handleAddition(added: number, chars: string): void {
+        this.project.net += added;
+        this.project.added += added;
+        this.project.chars = s.parseTextToCharMap(chars, this.project.chars);
+        const languageFields = s.findLanguage(this.project.languages, this.currLanguage);
+        if (languageFields) {
+            languageFields.added += added;
+            languageFields.chars = s.parseTextToCharMap(chars);
+        } else {
+            this.project.languages.push(
+                s.LanguageWithCharsSchema.parse({
+                    language: this.currLanguage,
+                    added: added,
+                    chars: s.parseTextToCharMap(chars),
+                })
+            );
+        }
+        this.incrementRank();
+    }
+
+    private incrementRank(): void {
+        this.project.rankBuffer++;
+        this.project = s.checkRankBufferOverflow(this.project);
+    }
+
+    updateLanguage(editor: TextEditor | undefined): void {
+        let language = "unknown";
+        if (editor) {
+            language = editor.document.languageId;
+        }
+        logger.log(`Detected new language: ${language}`);
+        this.currLanguage = language;
+    }
+
+    private async writeBackupFile(directory: string, year: number, stats: s.Stats): Promise<void> {
         const backupDir = path.join(directory, "backups");
         try {
             await fs.mkdir(backupDir, { recursive: true });
-            const backupPath = path.join(backupDir, `coderankbackup${year}.json`);
-            await fs.writeFile(backupPath, await zip(stringify(yearStats)), "utf-8");
+            const backupPath = path.join(backupDir, `coderankbackup${year}.json.zip`);
+            await fs.writeFile(backupPath, await zip(s.stringify(stats)), "utf-8");
         } catch (err) {
             window.showErrorMessage(`Error writing backup file: ${err}`);
         }
@@ -115,72 +110,65 @@ export class Stats {
 
     private async writeTotalFile(directory: string): Promise<void> {
         const totalPath = path.join(directory, this.totalFilename);
-        let totalFields = buildFields("jsonBig");
+        let totalFields = s.TotalFieldsSchema.parse({});
         try {
             const filenames = await getDirectoryFiles(directory, {
                 pattern: this.coderankFilePattern,
             });
             for (const name of filenames) {
-                const yearStats = await readJSONFile<StatsJSON>(path.join(directory, name));
-                if (yearStats) {
-                    const converted = convertFields("jsonBig", yearStats.total);
-                    totalFields = addFields("jsonBig", totalFields, converted);
+                const stats = await s.readJSONFile<s.Stats>(
+                    path.join(directory, name),
+                    s.StatsSchema
+                );
+                if (stats) {
+                    totalFields = s.sumStatsToTotalFields(totalFields, stats);
                 }
             }
-            await fs.writeFile(totalPath, stringify(totalFields), "utf-8");
+            await fs.writeFile(totalPath, s.stringify(totalFields), "utf-8");
         } catch (err) {
             window.showErrorMessage(`Error writing total file: ${err}`);
         }
     }
 
-    private async getYearStats(): Promise<StatsJSON> {
-        let yearStats = await readJSONFile<StatsJSON>(this.currFilePath);
+    private async getStats(): Promise<s.Stats> {
+        let stats = await s.readJSONFile<s.Stats>(this.currFilePath, s.StatsSchema);
 
-        if (yearStats === null) {
+        if (stats === null) {
             // A new year has started. If the user used coderank last year, update backup and total
             const prevYearPath = path.join(this.coderankDir, this.getFileName(this.year - 1));
-            const prevYearStats = await readJSONFile<StatsJSON>(prevYearPath);
+            const prevYearStats = await s.readJSONFile<s.Stats>(prevYearPath, s.StatsSchema);
 
             if (prevYearStats !== null) {
                 await this.writeBackupFile(this.coderankDir, this.year - 1, prevYearStats);
                 await this.writeTotalFile(this.coderankDir);
             }
-            yearStats = buildStatsJSON(this.year, this.week);
-        } else if (yearStats.weeks.length < this.week) {
+            stats = s.buildStats(this.year);
+        } else if (stats.weeks.length < this.week) {
             // A new week has started, update backup and total
-            await this.writeBackupFile(this.coderankDir, this.year, yearStats);
+            await this.writeBackupFile(this.coderankDir, this.year, stats);
             await this.writeTotalFile(this.coderankDir);
 
-            for (let i = yearStats.weeks.length + 1; i <= this.week; i++) {
-                yearStats.weeks.push(buildFields("jsonWeek", { week: i }));
+            for (let i = stats.weeks.length + 1; i <= this.week; i++) {
+                stats.weeks.push(s.WeeklyFieldsSchema.parse({ week: i }));
             }
         }
-        return yearStats;
+        return stats;
     }
 
     async dumpProjectToLocal(automatic: boolean = true): Promise<void> {
         const projectStatsCopy = this.project;
-        this.project = buildFields("base");
+        this.project = s.WeeklyFieldsSchema.parse({ week: this.week });
         const localStatsCopy = this.local;
 
         try {
             await fs.mkdir(this.coderankDir, { recursive: true });
-            const yearStats = await this.getYearStats();
 
-            yearStats.total = addFields(
-                "json",
-                yearStats.total,
-                convertFields("json", projectStatsCopy)
-            );
+            let stats = await this.getStats();
+            stats = s.sumProjectToStats(stats, projectStatsCopy);
 
-            this.local = convertFields("base", yearStats.total);
-            yearStats.weeks[this.week - 1] = addFields(
-                "jsonWeek",
-                yearStats.weeks[this.week - 1],
-                convertFields("jsonWeek", projectStatsCopy)
-            );
+            await fs.writeFile(this.currFilePath, s.stringify(stats), "utf-8");
 
-            await fs.writeFile(this.currFilePath, stringify(yearStats), "utf-8");
+            this.local = s.FieldsSchema.parse(stats.total);
             if (!automatic) {
                 window.showInformationMessage(`Saved coderank data to ${this.currFilePath}`);
             }
@@ -193,19 +181,16 @@ export class Stats {
 
     async loadLocal(): Promise<void> {
         try {
-            const yearStats = await readJSONFile<StatsJSON>(this.currFilePath);
-            if (yearStats) {
-                this.local = buildFields("base", {
-                    ...yearStats.total,
-                    chars: new CharData(yearStats.total.chars),
-                });
+            const stats = await s.readJSONFile<s.Stats>(this.currFilePath, s.StatsSchema);
+            if (stats) {
+                this.local = s.FieldsSchema.parse(stats.total);
             }
         } catch (err) {
             window.showErrorMessage(`Error loading values from local storage: ${err}`);
         }
     }
 
-    private async deleteLocalCoderankFiles(coderankDir: string): Promise<void> {
+    private async deleteCoderankFiles(coderankDir: string): Promise<void> {
         const filepaths = await getDirectoryFiles(coderankDir, {
             pattern: this.coderankFilePattern,
             fullPath: true,
@@ -214,7 +199,7 @@ export class Stats {
             fs.rm(path);
         }
         fs.rm(path.join(coderankDir, this.totalFilename));
-        this.local = buildFields("base");
+        this.local = s.FieldsSchema.parse({});
     }
 
     async loadBackup(): Promise<void> {
@@ -274,31 +259,41 @@ export class Stats {
         if (reportProgress) {
             reportProgress(50, `Summing ${this.totalFilename}`);
         }
-        let newRemoteTotal = await readJSONFile<FieldsJSONBig>(
-            path.join(coderankDir, this.totalFilename)
+        let newRemoteTotal = await s.readJSONFile<s.TotalFields>(
+            path.join(coderankDir, this.totalFilename),
+            s.TotalFieldsSchema
         );
         const remoteTotalPath = path.join(repoDir, this.totalFilename);
-        const currRemoteTotal = await readJSONFile<FieldsJSONBig>(remoteTotalPath);
+        const currRemoteTotal = await s.readJSONFile<s.TotalFields>(
+            remoteTotalPath,
+            s.TotalFieldsSchema
+        );
 
         if (currRemoteTotal && newRemoteTotal) {
-            newRemoteTotal = addFields("jsonBig", newRemoteTotal, currRemoteTotal);
+            newRemoteTotal = s.sumTotalFields(newRemoteTotal, currRemoteTotal);
         }
-        await fs.writeFile(remoteTotalPath, stringify(newRemoteTotal), "utf-8");
+
+        if (newRemoteTotal) {
+            await fs.writeFile(remoteTotalPath, s.stringify(newRemoteTotal), "utf-8");
+            this.remote = newRemoteTotal.rank;
+        }
 
         for (const [index, filename] of filenames.entries()) {
             if (reportProgress) {
                 reportProgress(50 + 19 * ((index + 1) / filenames.length), `Summing ${filename}`);
             }
-            let newRemoteStats = await readJSONFile<StatsJSON>(path.join(coderankDir, filename));
+            let newRemoteStats = await s.readJSONFile<s.Stats>(
+                path.join(coderankDir, filename),
+                s.StatsSchema
+            );
             const remoteStatsPath = path.join(repoDir, filename);
-            const currRemoteStats = await readJSONFile<StatsJSON>(remoteStatsPath);
+            const currRemoteStats = await s.readJSONFile<s.Stats>(remoteStatsPath, s.StatsSchema);
             if (newRemoteStats && currRemoteStats) {
-                newRemoteStats = addStatsJSON(currRemoteStats, newRemoteStats);
+                newRemoteStats = s.sumStats(currRemoteStats, newRemoteStats);
             }
-            await fs.writeFile(remoteStatsPath, stringify(newRemoteStats), "utf-8");
 
-            if (newRemoteStats?.year === this.year) {
-                this.remote = convertFields("base", newRemoteStats.total);
+            if (newRemoteStats) {
+                await fs.writeFile(remoteStatsPath, s.stringify(newRemoteStats), "utf-8");
             }
         }
     }
@@ -339,7 +334,7 @@ export class Stats {
                     await git.pushRepo();
 
                     reportProgress(90, `Removing local files`);
-                    await this.deleteLocalCoderankFiles(this.coderankDir);
+                    await this.deleteCoderankFiles(this.coderankDir);
                     if (saveCredentials) {
                         await git.saveCredentials(context);
                     }

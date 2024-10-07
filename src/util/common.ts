@@ -36,25 +36,6 @@ export function getTimestamp(): string {
     return `${hours}:${minutes}:${seconds}.${milliseconds}`;
 }
 
-export function stringify(fields: any): string {
-    return JSON.stringify(fields, (_, v) => (typeof v === "bigint" ? v.toString() : v));
-}
-
-export function parse<T>(jsonString: any): T {
-    const data = JSON.parse(jsonString);
-
-    if (
-        typeof data.total === "string" &&
-        typeof data.added === "string" &&
-        typeof data.deleted === "string"
-    ) {
-        data.total = BigInt(data.total);
-        data.added = BigInt(data.added);
-        data.deleted = BigInt(data.deleted);
-    }
-    return data as T;
-}
-
 interface GetDirectoryFilesOptions {
     fullPath?: boolean;
     pattern?: RegExp;
@@ -74,16 +55,4 @@ export async function getDirectoryFiles(
         }
     });
     return filenames;
-}
-
-export async function readJSONFile<T>(filePath: string): Promise<T | null> {
-    try {
-        const data = await fs.readFile(filePath, "utf-8");
-        return parse<T>(data);
-    } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-            throw err;
-        }
-        return null;
-    }
 }
