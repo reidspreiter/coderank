@@ -1,245 +1,182 @@
 import * as assert from "assert";
+import { promises as fs } from "fs";
 
+import sinon from "sinon";
 import * as vscode from "vscode";
+import { z } from "zod";
 
-import { CharData, addCharMaps } from "../models/chars";
-import { buildFields, addFields, convertFields, FieldsJSONBig } from "../models/fields";
-import { stringify, parse } from "../util/common";
+import * as s from "../schemata";
+import { RANK_SIZE } from "../util/common";
 
 suite("Coderank Test Suite", () => {
     vscode.window.showInformationMessage("Coderank tests");
 
-    suite("buildFields", () => {
-        suite("build base", () => {
-            test("from nothing", () => {
-                const expected = {
-                    rank: 0,
-                    total: 0,
-                    added: 0,
-                    deleted: 0,
-                    rankBuffer: 0,
-                    chars: new CharData(),
-                };
-                const fields = buildFields("base");
-                assert.deepStrictEqual(fields, expected);
+    suite("Test schemata", () => {
+        test("Zod ignore unnecessary properties", () => {
+            const languageWithChars = s.LanguageWithCharsSchema.parse({
+                chars: { k: 200 },
+                added: 200,
             });
-
-            test("from partial", () => {
-                const expected = {
-                    rank: 2,
-                    total: 0,
-                    added: 2,
-                    deleted: 0,
-                    rankBuffer: 0,
-                    chars: new CharData(),
-                };
-                const fields = buildFields("base", { rank: 2, added: 2 });
-                assert.deepStrictEqual(fields, expected);
-            });
+            const languageWithoutChars = s.LanguageSchema.parse(languageWithChars);
+            const expected = s.LanguageSchema.parse({ added: 200 });
+            assert.deepStrictEqual(languageWithoutChars, expected);
         });
 
-        suite("build json", () => {
-            test("from nothing", () => {
-                const expected = {
-                    rank: 0,
-                    total: 0,
-                    added: 0,
-                    deleted: 0,
-                    rankBuffer: 0,
-                    chars: {},
-                };
-                const fields = buildFields("json");
-                assert.deepStrictEqual(fields, expected);
+        test("Test checkRankBufferOverflow", () => {
+            let obj = { rank: 0, rankBuffer: RANK_SIZE + 3 };
+            const expected = { rank: 1, rankBuffer: 3 };
+            obj = s.checkRankBufferOverflow(obj);
+            assert.deepStrictEqual(obj, expected);
+        });
+
+        suite("Handle bigints", () => {
+            const bigSchema = z.object({ bigNumber: z.string().transform((x) => BigInt(x)) });
+            const obj = { bigNumber: BigInt(500) };
+            const stringified = s.stringify(obj);
+
+            test("Stringify bigints to strings", () => {
+                const expected = JSON.stringify({ bigNumber: "500" });
+                assert.strictEqual(stringified, expected);
             });
 
-            test("from partial", () => {
-                const expected = {
-                    rank: 2,
-                    total: 0,
-                    added: 2,
-                    deleted: 0,
-                    rankBuffer: 0,
-                    chars: {},
-                };
-                const fields = buildFields("json", { rank: 2, added: 2 });
-                assert.deepStrictEqual(fields, expected);
+            test("Parse bigint strings to bigints", () => {
+                const parsed = bigSchema.parse(JSON.parse(stringified));
+                assert.deepStrictEqual(parsed, obj);
             });
         });
 
-        suite("build jsonWeek", () => {
-            test("from nothing", () => {
-                const expected = {
-                    rank: 0,
-                    total: 0,
-                    added: 0,
-                    deleted: 0,
-                    rankBuffer: 0,
-                    chars: {},
-                    week: 0,
-                };
-                const fieldsJSONWeek = buildFields("jsonWeek");
-                assert.deepStrictEqual(fieldsJSONWeek, expected);
+        test("Test parseTextToCharMap", () => {
+            const text = "x\n9\t88  9  ";
+            const expected = { x: 1, "\n": 1, "9": 2, "\t": 1, "8": 2, " ": 4 };
+            const charMap = s.parseTextToCharMap(text);
+            assert.deepStrictEqual(charMap, expected);
+        });
+
+        test("Test sumCharMaps", () => {
+            const map1 = { x: 300, y: 8 };
+            const map2 = { b: 50, " ": 1, x: 1 };
+            const expected = { x: 301, y: 8, b: 50, " ": 1 };
+            const actual = s.sumCharMaps(map1, map2);
+            assert.deepStrictEqual(actual, expected);
+        });
+
+        test("Test sumFields", () => {
+            const fields1 = s.FieldsSchema.parse({
+                rank: 1,
+                added: 8,
+                deleted: 7,
+                net: 1,
+                chars: { x: 8 },
+                rankBuffer: RANK_SIZE - 1,
+            });
+            const fields2 = s.WeeklyFieldsSchema.parse({
+                rank: 1,
+                added: 90,
+                deleted: 99,
+                net: -9,
+                chars: { y: 1, x: 3 },
+                rankBuffer: 1,
+            });
+            const expected = s.FieldsSchema.parse({
+                rank: 3,
+                added: 98,
+                deleted: 106,
+                net: -8,
+                chars: { x: 11, y: 1 },
+                rankBuffer: 0,
+            });
+            const actual = s.sumFields(fields1, fields2);
+            assert.deepStrictEqual(actual, expected);
+        });
+
+        suite("Test sumLanguages", () => {
+            let languages1: s.Language[];
+            let languages2: s.LanguageWithChars[];
+
+            const initLanguages = () => {
+                languages1 = [
+                    s.LanguageSchema.parse({ language: "python", addded: 8, deleted: 7 }),
+                    s.LanguageSchema.parse({ added: 8 }),
+                ];
+                languages2 = [
+                    s.LanguageWithCharsSchema.parse({
+                        language: "rust",
+                        added: 2,
+                        chars: { x: 1, y: 1 },
+                    }),
+                    s.LanguageWithCharsSchema.parse({ added: 9, deleted: 2, chars: { x: 9 } }),
+                ];
+            };
+
+            test("Add LanguageWithChars to Language", () => {
+                initLanguages();
+                const expected = [
+                    s.LanguageSchema.parse({ language: "python", addded: 8, deleted: 7 }),
+                    s.LanguageSchema.parse({ added: 17, deleted: 2 }),
+                    s.LanguageSchema.parse({ language: "rust", added: 2 }),
+                ];
+                const actual = s.sumLanguages(languages1, languages2);
+                assert.deepStrictEqual(actual, expected);
             });
 
-            test("from partial", () => {
-                const expected = {
-                    rank: 2,
-                    total: 0,
-                    added: 2,
-                    deleted: 0,
-                    rankBuffer: 0,
-                    chars: {},
-                    week: 5,
-                };
-                const fields = buildFields("jsonWeek", { week: 5, rank: 2, added: 2 });
-                assert.deepStrictEqual(fields, expected);
+            test("Add Language to LanguageWithChars", () => {
+                initLanguages();
+                const expectedWithChars = [
+                    s.LanguageWithCharsSchema.parse({
+                        language: "rust",
+                        added: 2,
+                        chars: { x: 1, y: 1 },
+                    }),
+                    s.LanguageWithCharsSchema.parse({ added: 17, deleted: 2, chars: { x: 9 } }),
+                    s.LanguageWithCharsSchema.parse({
+                        language: "python",
+                        addded: 8,
+                        deleted: 7,
+                        chars: {},
+                    }),
+                ];
+                const actualWithChars = s.sumLanguages(languages2, languages1, true);
+                assert.deepStrictEqual(actualWithChars, expectedWithChars);
             });
         });
 
-        suite("build jsonBig", () => {
-            test("from nothing", () => {
-                const expected = {
-                    rank: 0,
-                    total: BigInt(0),
-                    added: BigInt(0),
-                    deleted: BigInt(0),
-                    rankBuffer: 0,
-                    chars: {},
-                };
-                const fieldsJSONBig = buildFields("jsonBig");
-                assert.deepStrictEqual(fieldsJSONBig, expected);
+        suite("Test readJSONFile", () => {
+            const testSchema = z.object({ number: z.number() });
+
+            test("Return null if file not found", async () => {
+                sinon.restore();
+                sinon.stub(fs, "readFile").rejects({ code: "ENOENT" });
+
+                const result = await s.readJSONFile("nonexistent.json", z.object({}));
+                assert.strictEqual(result, null);
             });
 
-            test("from partial", () => {
-                const expected = {
-                    rank: 2,
-                    total: BigInt(0),
-                    added: BigInt(2),
-                    deleted: BigInt(0),
-                    rankBuffer: 0,
-                    chars: {},
-                };
-                const fields = buildFields("jsonBig", { rank: 2, added: BigInt(2) });
-                assert.deepStrictEqual(fields, expected);
+            test("Throw an error if file contains invalid json", async () => {
+                sinon.restore();
+                sinon.stub(fs, "readFile").resolves("not valid json");
+
+                await assert.rejects(async () => {
+                    await s.readJSONFile("test.json", testSchema);
+                }, /JSON Parsing Error:/);
             });
-        });
-    });
 
-    suite("convertFields", () => {
-        const fields = buildFields("base", { added: 1, chars: new CharData({ a: 2, b: 1 }) });
-        const fieldsJSON = buildFields("json", { added: 1, chars: { a: 2, b: 1 } });
-        const fieldsJSONWeek = buildFields("jsonWeek", { added: 1, chars: { a: 2, b: 1 } });
-        const fieldsJSONBig = buildFields("jsonBig", { added: BigInt(1), chars: { a: 2, b: 1 } });
+            test("Throw a validation error if schema does not match", async () => {
+                sinon.restore();
+                sinon.stub(fs, "readFile").resolves(JSON.stringify({ number: "8" }));
 
-        const from = [fields, fieldsJSON, fieldsJSONWeek];
-        const types = ["base", "json", "jsonWeek"];
-
-        from.forEach((fromFields, index) => {
-            const type = types[index];
-            suite(`convert ${type}`, () => {
-                test("to base", () => {
-                    assert.deepStrictEqual(convertFields("base", fromFields), fields);
-                });
-                test("to json", () => {
-                    assert.deepStrictEqual(convertFields("json", fromFields), fieldsJSON);
-                });
-                test("to jsonWeek", () => {
-                    assert.deepStrictEqual(convertFields("jsonWeek", fromFields), fieldsJSONWeek);
-                });
-                test("to jsonBig", () => {
-                    assert.deepStrictEqual(convertFields("jsonBig", fromFields), fieldsJSONBig);
-                });
+                await assert.rejects(async () => {
+                    await s.readJSONFile("test.json", testSchema);
+                }, /Validation Error:/);
             });
-        });
-    });
 
-    suite("addFields", () => {
-        let fields1: any = buildFields("base", {
-            added: 3,
-            rankBuffer: 9999,
-            chars: new CharData({ a: 2 }),
-        });
-        let fields2: any = buildFields("base", {
-            deleted: 1,
-            rankBuffer: 1,
-            chars: new CharData({ a: 1, b: 4 }),
-        });
-        let expected: any = buildFields("base", {
-            added: 3,
-            deleted: 1,
-            rank: 1,
-            total: 2,
-            chars: new CharData({ a: 3, b: 4 }),
-        });
+            test("Return data if validation succeeds", async () => {
+                const expected = { number: 8 };
+                sinon.restore();
+                sinon.stub(fs, "readFile").resolves(JSON.stringify(expected));
 
-        test("add base", () => {
-            assert.deepStrictEqual(addFields("base", fields1, fields2), expected);
-        });
-
-        test("add json", () => {
-            fields1 = convertFields("json", fields1);
-            fields2 = convertFields("json", fields2);
-            expected = convertFields("json", expected);
-            assert.deepStrictEqual(addFields("json", fields1, fields2), expected);
-        });
-
-        test("add jsonWeek", () => {
-            fields1 = convertFields("jsonWeek", fields1);
-            fields2 = convertFields("jsonWeek", fields2);
-            expected = convertFields("jsonWeek", expected);
-            assert.deepStrictEqual(addFields("jsonWeek", fields1, fields2), expected);
-        });
-
-        test("add jsonBig", () => {
-            fields1 = convertFields("jsonBig", fields1);
-            fields2 = convertFields("jsonBig", fields2);
-            expected = convertFields("jsonBig", expected);
-            assert.deepStrictEqual(addFields("jsonBig", fields1, fields2), expected);
-        });
-    });
-
-    suite("charData", () => {
-        test("initialize default", () => {
-            const charData = new CharData();
-            const expected = {};
-            assert.deepStrictEqual(charData.map, expected);
-        });
-
-        test("initialize from map", () => {
-            const charData = new CharData({ a: 1, " ": 2 });
-            const expected = { " ": 2, a: 1 };
-            assert.deepStrictEqual(Object.entries(charData.map), Object.entries(expected));
-        });
-
-        test("map a string of text", () => {
-            const charData = new CharData({ a: 2, " ": 2 });
-            charData.mapText("tt tt\nh.");
-            const expected = { t: 4, " ": 3, a: 2, "\n": 1, h: 1, ".": 1 };
-            assert.deepStrictEqual(Object.entries(charData.map), Object.entries(expected));
-        });
-
-        test("add charmaps", () => {
-            const base = { a: 50, " ": 2, "\n": 5 };
-            const addend = { b: 50, " ": 5, "\n": 100, a: 5 };
-            const expected = { a: 55, b: 50, " ": 7, "\n": 105 };
-            assert.deepStrictEqual(addCharMaps(base, addend), expected);
-        });
-    });
-
-    suite("common", () => {
-        const fieldsJSON = buildFields("json", { total: 5, added: 8, deleted: 3 });
-        const fieldsJSONBig = convertFields("jsonBig", fieldsJSON);
-        const stringified = stringify(fieldsJSONBig);
-
-        test("stringify bigints to strings", () => {
-            const expected =
-                '{"rank":0,"total":"5","added":"8","deleted":"3","chars":{},"rankBuffer":0}';
-            assert.deepStrictEqual(stringified, expected);
-        });
-
-        test("parse strings to bigints", () => {
-            const parsed = parse<FieldsJSONBig>(stringified);
-            assert.deepStrictEqual(parsed, fieldsJSONBig);
+                const actual = await s.readJSONFile("test.json", testSchema);
+                assert.deepStrictEqual(actual, expected);
+            });
         });
     });
 });
