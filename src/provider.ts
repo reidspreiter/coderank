@@ -37,8 +37,8 @@ class StatItem extends TreeItem {
             children === undefined
                 ? TreeItemCollapsibleState.None
                 : expanded
-                    ? TreeItemCollapsibleState.Expanded
-                    : TreeItemCollapsibleState.Collapsed;
+                  ? TreeItemCollapsibleState.Expanded
+                  : TreeItemCollapsibleState.Collapsed;
 
         super(label, collapsibleState);
         this.contextValue = contextValue;
@@ -136,7 +136,11 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
     }
 
     setStats(config: Config, stats: StatsManager): void {
-        const projectChildren = this.buildChildren(Location.Project, stats.project, config.trackChars);
+        const projectChildren = this.buildChildren(
+            Location.Project,
+            stats.project,
+            config.trackChars
+        );
         const localChildren = this.buildChildren(Location.Local, stats.local, config.trackChars);
 
         this.data = [

@@ -7,7 +7,11 @@ import { getConfig, Logger } from "./services";
 import { StatsManager } from "./stats";
 import { Location } from "./util/common";
 
-export type EventStatus = "normal" | "git" | "conflict";
+export enum CoderankStatus {
+    Normal = "normal",
+    Git = "git",
+    Conflict = "conflict",
+}
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
@@ -56,7 +60,7 @@ export async function activate(context: ExtensionContext) {
     );
 
     let refreshCounter = 0;
-    let status: EventStatus = "normal";
+    let status = CoderankStatus.Normal;
     const conflictRegex = /<<<<<<< HEAD\n(.*?)=======\n(.*?)>>>>>>> .*?/s;
     context.subscriptions.push(
         workspace.onDidChangeTextDocument((event) => {
@@ -72,19 +76,19 @@ export async function activate(context: ExtensionContext) {
             const filename = path.basename(event.document.fileName);
             if (event.contentChanges.length === 0 || scheme !== "file") {
                 if (scheme === "git") {
-                    status = "git";
+                    status = CoderankStatus.Git;
                 }
                 return;
             }
 
             if (filename === "COMMIT_EDITMSG" || filename === "git-rebase-todo") {
-                status = "git";
+                status = CoderankStatus.Git;
                 return;
             }
 
-            if (status === "conflict") {
+            if (status === CoderankStatus.Conflict) {
                 return;
-            } else if (status === "git") {
+            } else if (status === CoderankStatus.Git) {
                 const change = event.contentChanges[0];
                 if (change.text.length === 0) {
                     if (change.rangeLength !== 1) {
@@ -96,7 +100,7 @@ export async function activate(context: ExtensionContext) {
                         return;
                     }
                 }
-                status = "normal";
+                status = CoderankStatus.Normal;
             }
 
             const changes = event.contentChanges.length;
@@ -107,7 +111,7 @@ export async function activate(context: ExtensionContext) {
 
             if (change.text.length) {
                 if (change.text.match(conflictRegex)) {
-                    status = "conflict";
+                    status = CoderankStatus.Conflict;
                     return;
                 }
                 const { start, end } = change.range;
