@@ -137,6 +137,8 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     setStats(config: Config, stats: StatsManager): void {
         const projectChildren = this.buildChildren("project", stats.project, config.trackChars);
+        const localChildren = this.buildChildren("local", stats.local, config.trackChars);
+
         this.data = [
             new StatItem({
                 label: stats.project.rank.toString(),
@@ -144,28 +146,19 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
                 tooltip: "project rank (1 rank = 10,000 individual user actions)",
                 children: projectChildren,
             }),
+            new StatItem({
+                label: stats.local.rank.toString(),
+                iconPath: new ThemeIcon("device-desktop"),
+                tooltip: "local rank (1 rank = 10,000 individual user actions)",
+                children: localChildren,
+                expanded: false,
+            }),
+            new StatItem({
+                label: stats.remote.toString(),
+                iconPath: new ThemeIcon("cloud"),
+                tooltip: "remote rank (1 rank = 10,000 individual user actions)",
+            }),
         ];
-        if (config.mode !== "project") {
-            const localChildren = this.buildChildren("local", stats.local, config.trackChars);
-            this.data.push(
-                new StatItem({
-                    label: stats.local.rank.toString(),
-                    iconPath: new ThemeIcon("device-desktop"),
-                    tooltip: "local rank (1 rank = 10,000 individual user actions)",
-                    children: localChildren,
-                    expanded: false,
-                })
-            );
-        }
-        if (config.mode === "remote") {
-            this.data.push(
-                new StatItem({
-                    label: stats.remote.toString(),
-                    iconPath: new ThemeIcon("cloud"),
-                    tooltip: "remote rank (1 rank = 10,000 individual user actions)",
-                })
-            );
-        }
         this.refresh();
     }
 

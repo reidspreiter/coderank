@@ -18,7 +18,7 @@ export async function activate(context: ExtensionContext) {
     const stats = new StatsManager(context);
     stats.updateLanguage(window.activeTextEditor);
 
-    if (config.loadLocalOnStart && config.mode !== "project") {
+    if (config.loadLocalOnStart) {
         await stats.loadLocal();
     }
 
@@ -47,7 +47,7 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
-            if (config.mode !== "project" && config.autoStore) {
+            if (config.autoStore) {
                 await stats.dumpProjectToLocal();
                 provider.setStats(config, stats);
             }
@@ -140,38 +140,20 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         commands.registerCommand("coderank.dumpProjectToLocal", async () => {
-            if (config.mode !== "project") {
-                await stats.dumpProjectToLocal(false);
-                provider.setStats(config, stats);
-            } else {
-                window.showErrorMessage(
-                    `'coderank.mode' is set to '${config.mode}': set to 'local' or 'remote' to access local storage`
-                );
-            }
+            await stats.dumpProjectToLocal(false);
+            provider.setStats(config, stats);
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.loadBackup", async () => {
-            if (config.mode !== "project") {
-                stats.loadBackup();
-            } else {
-                window.showErrorMessage(
-                    `'coderank.mode' is set to '${config.mode}': set to 'local' or 'remote' to create and load backups`
-                );
-            }
+            stats.loadBackup();
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.dumpLocalToRemote", async () => {
-            if (config.mode === "remote") {
-                stats.dumpLocalToRemote(context, config.saveCredentials);
-            } else {
-                window.showErrorMessage(
-                    `'coderank.mode' is set to '${config.mode}': set to 'remote' to access remote repository`
-                );
-            }
+            stats.dumpLocalToRemote(context, config.saveCredentials);
         })
     );
 }
