@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const VersionSchema = z.string().default("0.2.0");
+
 export const CharMapSchema = z.record(z.number()).default({});
 export type CharMap = z.infer<typeof CharMapSchema>;
 
@@ -37,6 +39,7 @@ export const WeeklyFieldsSchema = FieldsSchema.extend({
 export type WeeklyFields = z.infer<typeof WeeklyFieldsSchema>;
 
 export const TotalFieldsSchema = z.object({
+    version: VersionSchema,
     rank: z.number().default(0),
     net: z
         .string()
@@ -57,6 +60,7 @@ export const TotalFieldsSchema = z.object({
 export type TotalFields = z.infer<typeof TotalFieldsSchema>;
 
 export const StatsSchema = z.object({
+    version: VersionSchema,
     year: z.number(),
     total: FieldsWithLanguageSchema,
     weeks: z.array(WeeklyFieldsSchema),
