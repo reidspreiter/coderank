@@ -2,7 +2,11 @@ import { promises as fs } from "fs";
 import path from "path";
 
 export const RANK_SIZE = 10000;
-export type Location = "project" | "local" | "remote";
+export enum Location {
+    Project = "project",
+    Local = "local",
+    Remote = "remote",
+}
 
 export function getDate(): string {
     const now = new Date();

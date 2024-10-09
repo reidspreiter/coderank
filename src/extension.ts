@@ -5,6 +5,7 @@ import { ExtensionContext, window, workspace, commands } from "vscode";
 import { CoderankStatsProvider } from "./provider";
 import { getConfig, Logger } from "./services";
 import { StatsManager } from "./stats";
+import { Location } from "./util/common";
 
 export type EventStatus = "normal" | "git" | "conflict";
 
@@ -123,7 +124,7 @@ export async function activate(context: ExtensionContext) {
             if (config.refreshRate !== 0) {
                 if (refreshCounter >= config.refreshRate) {
                     refreshCounter = 0;
-                    provider.setFields(stats.project, "project", config.trackChars);
+                    provider.setFields(stats.project, Location.Project, config.trackChars);
                 }
             } else {
                 refreshCounter = 0;
@@ -134,7 +135,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand("coderank.refreshProject", () => {
             refreshCounter = 0;
-            provider.setFields(stats.project, "project", config.trackChars);
+            provider.setFields(stats.project, Location.Project, config.trackChars);
         })
     );
 
@@ -158,4 +159,4 @@ export async function activate(context: ExtensionContext) {
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }

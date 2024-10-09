@@ -37,8 +37,8 @@ class StatItem extends TreeItem {
             children === undefined
                 ? TreeItemCollapsibleState.None
                 : expanded
-                  ? TreeItemCollapsibleState.Expanded
-                  : TreeItemCollapsibleState.Collapsed;
+                    ? TreeItemCollapsibleState.Expanded
+                    : TreeItemCollapsibleState.Collapsed;
 
         super(label, collapsibleState);
         this.contextValue = contextValue;
@@ -62,8 +62,8 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         this.setStats(config, stats);
     }
 
-    private getFieldLocationIndex(location: Location): number {
-        return location === "project" ? 0 : location === "local" ? 1 : 2;
+    private getLocationIndex(location: Location): number {
+        return location === Location.Project ? 0 : location === Location.Local ? 1 : 2;
     }
 
     private buildCharDataChildren(charData: s.CharMap): StatItem {
@@ -136,8 +136,8 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
     }
 
     setStats(config: Config, stats: StatsManager): void {
-        const projectChildren = this.buildChildren("project", stats.project, config.trackChars);
-        const localChildren = this.buildChildren("local", stats.local, config.trackChars);
+        const projectChildren = this.buildChildren(Location.Project, stats.project, config.trackChars);
+        const localChildren = this.buildChildren(Location.Local, stats.local, config.trackChars);
 
         this.data = [
             new StatItem({
@@ -164,7 +164,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     setFields(fields: s.Fields, location: Location, refreshCharData: boolean = false): void {
         const { rank, net, added, deleted, chars } = fields;
-        const dataFields = this.data[this.getFieldLocationIndex(location)];
+        const dataFields = this.data[this.getLocationIndex(location)];
         dataFields.label = rank.toString();
 
         if (dataFields.children !== undefined) {
