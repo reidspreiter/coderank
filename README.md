@@ -65,7 +65,7 @@ Each instance of VS Code is initialized with new project data. When a VS Code wi
 
 Project data is empty at first, but updates automatically after a set amount of typing actions. Project data can also be manually updated by clicking the refresh button in the top right of the panel.
 
-![Refresh Button](./static/projectToLocal.png)
+![Refresh Button](./static/refresh.png)
 
 Coderank includes checks to prevent events from being wrongfully tracked or ignored. However, a user's extensions and other unknown factors could slip by these checks. If an issue occurs, please [report the bug](https://github.com/reidspreiter/coderank/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=).
 
