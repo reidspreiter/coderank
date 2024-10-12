@@ -35,17 +35,17 @@
     "commands": [
       {
         "command": "coderank.refreshProject",
-        "title": "Refresh project fields",
+        "title": "Refresh project data",
         "icon": "$(refresh)"
       },
       {
         "command": "coderank.dumpProjectToLocal",
-        "title": "Add project fields to local storage",
+        "title": "Add project data to local storage",
         "icon": "$(desktop-download)"
       },
       {
         "command": "coderank.dumpLocalToRemote",
-        "title": "Add local fields to remote repository",
+        "title": "Add local data to remote repository",
         "icon": "$(cloud-upload)"
       },
       {
@@ -68,7 +68,7 @@
         "coderank.refreshRate": {
           "type": "number",
           "default": 100,
-          "description": "Automatically refresh project fields every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
+          "description": "Automatically refresh project data every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
         },
         "coderank.saveCredentials": {
           "type": "boolean",
@@ -83,17 +83,17 @@
         "coderank.autoStore": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically save project fields on document save. Default = true"
+          "description": "Automatically add project data to local storage on document save. Default = true"
         },
         "coderank.loadLocalOnStart": {
           "type": "boolean",
           "default": true,
-          "description": "Load fields from local storage when a new window is opened. Default = true"
+          "description": "Load data from local storage when a new window is opened. Default = true"
         },
         "coderank.debug": {
           "type": "boolean",
           "default": false,
-          "description": "Logs typing events to the console for debug and development purposes. Default = false"
+          "description": "Logs events to the console for debug and development purposes. Default = false"
         }
       }
     },
@@ -113,6 +113,11 @@
           "command": "coderank.dumpLocalToRemote",
           "when": "view == coderank",
           "group": "navigation"
+        },
+        {
+          "command": "coderank.loadBackup",
+          "when": "view == coderank",
+          "group": "inline"
         }
       ]
     }
