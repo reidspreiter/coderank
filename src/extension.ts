@@ -5,8 +5,13 @@ import { ExtensionContext, window, workspace, commands } from "vscode";
 import { CoderankStatsProvider } from "./provider";
 import { getConfig, Logger } from "./services";
 import { StatsManager } from "./stats";
+import { Location } from "./util/common";
 
-export type EventStatus = "normal" | "git" | "conflict";
+export enum CoderankStatus {
+    Normal = "normal",
+    Git = "git",
+    Conflict = "conflict",
+}
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
@@ -18,7 +23,7 @@ export async function activate(context: ExtensionContext) {
     const stats = new StatsManager(context);
     stats.updateLanguage(window.activeTextEditor);
 
-    if (config.loadLocalOnStart && config.mode !== "project") {
+    if (config.loadLocalOnStart) {
         await stats.loadLocal();
     }
 
@@ -47,7 +52,7 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
-            if (config.mode !== "project" && config.autoStore) {
+            if (config.autoStore) {
                 await stats.dumpProjectToLocal();
                 provider.setStats(config, stats);
             }
@@ -55,7 +60,7 @@ export async function activate(context: ExtensionContext) {
     );
 
     let refreshCounter = 0;
-    let status: EventStatus = "normal";
+    let status = CoderankStatus.Normal;
     const conflictRegex = /<<<<<<< HEAD\n(.*?)=======\n(.*?)>>>>>>> .*?/s;
     context.subscriptions.push(
         workspace.onDidChangeTextDocument((event) => {
@@ -71,19 +76,19 @@ export async function activate(context: ExtensionContext) {
             const filename = path.basename(event.document.fileName);
             if (event.contentChanges.length === 0 || scheme !== "file") {
                 if (scheme === "git") {
-                    status = "git";
+                    status = CoderankStatus.Git;
                 }
                 return;
             }
 
             if (filename === "COMMIT_EDITMSG" || filename === "git-rebase-todo") {
-                status = "git";
+                status = CoderankStatus.Git;
                 return;
             }
 
-            if (status === "conflict") {
+            if (status === CoderankStatus.Conflict) {
                 return;
-            } else if (status === "git") {
+            } else if (status === CoderankStatus.Git) {
                 const change = event.contentChanges[0];
                 if (change.text.length === 0) {
                     if (change.rangeLength !== 1) {
@@ -95,7 +100,7 @@ export async function activate(context: ExtensionContext) {
                         return;
                     }
                 }
-                status = "normal";
+                status = CoderankStatus.Normal;
             }
 
             const changes = event.contentChanges.length;
@@ -106,7 +111,7 @@ export async function activate(context: ExtensionContext) {
 
             if (change.text.length) {
                 if (change.text.match(conflictRegex)) {
-                    status = "conflict";
+                    status = CoderankStatus.Conflict;
                     return;
                 }
                 const { start, end } = change.range;
@@ -123,7 +128,7 @@ export async function activate(context: ExtensionContext) {
             if (config.refreshRate !== 0) {
                 if (refreshCounter >= config.refreshRate) {
                     refreshCounter = 0;
-                    provider.setFields(stats.project, "project", config.trackChars);
+                    provider.setFields(stats.project, Location.Project, config.trackChars);
                 }
             } else {
                 refreshCounter = 0;
@@ -134,46 +139,28 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         commands.registerCommand("coderank.refreshProject", () => {
             refreshCounter = 0;
-            provider.setFields(stats.project, "project", config.trackChars);
+            provider.setFields(stats.project, Location.Project, config.trackChars);
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.dumpProjectToLocal", async () => {
-            if (config.mode !== "project") {
-                await stats.dumpProjectToLocal(false);
-                provider.setStats(config, stats);
-            } else {
-                window.showErrorMessage(
-                    `'coderank.mode' is set to '${config.mode}': set to 'local' or 'remote' to access local storage`
-                );
-            }
+            await stats.dumpProjectToLocal(false);
+            provider.setStats(config, stats);
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.loadBackup", async () => {
-            if (config.mode !== "project") {
-                stats.loadBackup();
-            } else {
-                window.showErrorMessage(
-                    `'coderank.mode' is set to '${config.mode}': set to 'local' or 'remote' to create and load backups`
-                );
-            }
+            stats.loadBackup();
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.dumpLocalToRemote", async () => {
-            if (config.mode === "remote") {
-                stats.dumpLocalToRemote(context, config.saveCredentials);
-            } else {
-                window.showErrorMessage(
-                    `'coderank.mode' is set to '${config.mode}': set to 'remote' to access remote repository`
-                );
-            }
+            stats.dumpLocalToRemote(context, config.saveCredentials);
         })
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }

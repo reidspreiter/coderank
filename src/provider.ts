@@ -62,8 +62,8 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         this.setStats(config, stats);
     }
 
-    private getFieldLocationIndex(location: Location): number {
-        return location === "project" ? 0 : location === "local" ? 1 : 2;
+    private getLocationIndex(location: Location): number {
+        return location === Location.Project ? 0 : location === Location.Local ? 1 : 2;
     }
 
     private buildCharDataChildren(charData: s.CharMap): StatItem {
@@ -136,7 +136,13 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
     }
 
     setStats(config: Config, stats: StatsManager): void {
-        const projectChildren = this.buildChildren("project", stats.project, config.trackChars);
+        const projectChildren = this.buildChildren(
+            Location.Project,
+            stats.project,
+            config.trackChars
+        );
+        const localChildren = this.buildChildren(Location.Local, stats.local, config.trackChars);
+
         this.data = [
             new StatItem({
                 label: stats.project.rank.toString(),
@@ -144,34 +150,25 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
                 tooltip: "project rank (1 rank = 10,000 individual user actions)",
                 children: projectChildren,
             }),
+            new StatItem({
+                label: stats.local.rank.toString(),
+                iconPath: new ThemeIcon("device-desktop"),
+                tooltip: "local rank (1 rank = 10,000 individual user actions)",
+                children: localChildren,
+                expanded: false,
+            }),
+            new StatItem({
+                label: stats.remote.toString(),
+                iconPath: new ThemeIcon("cloud"),
+                tooltip: "remote rank (1 rank = 10,000 individual user actions)",
+            }),
         ];
-        if (config.mode !== "project") {
-            const localChildren = this.buildChildren("local", stats.local, config.trackChars);
-            this.data.push(
-                new StatItem({
-                    label: stats.local.rank.toString(),
-                    iconPath: new ThemeIcon("device-desktop"),
-                    tooltip: "local rank (1 rank = 10,000 individual user actions)",
-                    children: localChildren,
-                    expanded: false,
-                })
-            );
-        }
-        if (config.mode === "remote") {
-            this.data.push(
-                new StatItem({
-                    label: stats.remote.toString(),
-                    iconPath: new ThemeIcon("cloud"),
-                    tooltip: "remote rank (1 rank = 10,000 individual user actions)",
-                })
-            );
-        }
         this.refresh();
     }
 
     setFields(fields: s.Fields, location: Location, refreshCharData: boolean = false): void {
         const { rank, net, added, deleted, chars } = fields;
-        const dataFields = this.data[this.getFieldLocationIndex(location)];
+        const dataFields = this.data[this.getLocationIndex(location)];
         dataFields.label = rank.toString();
 
         if (dataFields.children !== undefined) {

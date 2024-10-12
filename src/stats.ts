@@ -134,23 +134,20 @@ export class StatsManager {
         let stats = await s.readJSONFile<s.Stats>(this.currFilePath, s.StatsSchema);
 
         if (stats === null) {
-            // A new year has started. If the user used coderank last year, update backup and total
+            // A new year has started. If the user used coderank last year, update backup
             const prevYearPath = path.join(this.coderankDir, this.getFileName(this.year - 1));
             const prevYearStats = await s.readJSONFile<s.Stats>(prevYearPath, s.StatsSchema);
 
             if (prevYearStats !== null) {
                 await this.writeBackupFile(this.coderankDir, this.year - 1, prevYearStats);
-                await this.writeTotalFile(this.coderankDir);
             }
             stats = s.buildStats(this.year);
-        } else if (stats.weeks.length < this.week) {
-            // A new week has started, update backup and total
+        } else if (
+            stats.weeks[this.week - 1].rank === 0 &&
+            stats.weeks[this.week - 1].rankBuffer === 0
+        ) {
+            // A new week has started, update backup
             await this.writeBackupFile(this.coderankDir, this.year, stats);
-            await this.writeTotalFile(this.coderankDir);
-
-            for (let i = stats.weeks.length + 1; i <= this.week; i++) {
-                stats.weeks.push(s.WeeklyFieldsSchema.parse({ week: i }));
-            }
         }
         return stats;
     }
@@ -213,7 +210,7 @@ export class StatsManager {
             if (filenames.length === 0) {
                 window.showWarningMessage(
                     "Could not find an existing backup file. " +
-                        "Backup files are updated on a weekly basis."
+                        "Backup files are updated on a weekly basis and removed after pushing to remote."
                 );
                 return;
             }
