@@ -2,6 +2,12 @@
 
 All notable changes to the "coderank" extension will be documented in this file.
 
+## [0.3.0]
+
+- Track programming languages
+- Removed `coderank.mode`
+- Removed `coderank.charRefreshRate`
+
 ## [0.2.0]
 
 - Enhanced event logger
