@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Coderank</title>
+        <link rel="icon" type="image/x-icon" href="static/images/icon.png" />
+        <link rel="stylesheet" href="static/index.css" />
+    </head>
+
+    <body>
+        <div class="container">
+            <p>Stats: <button id="stats-select-button">Total</button></p>
+            <p>Week: <button id="week-select-button">All</button></p>
+            <button>Collapse Stats Table</button>
+            <table id="header-table"></table>
+            <div class="additional-stats-container">
+                <table id="additional-stats-table"></table>
+            </div>
+            <canvas id="chart"></canvas>
+        </div>
+    </body>
+    <script src="static/index.js" type="module"></script>
+</html>
