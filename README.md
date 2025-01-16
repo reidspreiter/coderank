@@ -2,7 +2,7 @@
 
 # Coderank
 
-![icon](./icon.png)
+![icon](./src/web/static/images/icon.png)
 
 </div>
 
