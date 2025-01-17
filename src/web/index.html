@@ -10,13 +10,16 @@
 
     <body>
         <div class="container">
-            <p>Stats: <button id="stats-select-button">Total</button></p>
-            <p>Week: <button id="week-select-button">All</button></p>
+            <p>
+                Stats:
+                <select name="stats-select" id="stats-select"></select>
+            </p>
+            <p>
+                Week:
+                <select name="week-select" id="week-select"></select>
+            </p>
             <button>Collapse Stats Table</button>
-            <table id="header-table"></table>
-            <div class="additional-stats-container">
-                <table id="additional-stats-table"></table>
-            </div>
+            <table id="stats-table"></table>
             <canvas id="chart"></canvas>
         </div>
     </body>
