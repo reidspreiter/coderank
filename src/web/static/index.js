@@ -3,7 +3,31 @@ const SUPPORTED_VERSION = "0.2.0";
 document.addEventListener("DOMContentLoaded", async () => {
     try {
         const coderankData = await loadCoderankData();
+        constructSelect("stats-select", coderankData.keys(), {
+            onChange: (opt) => {
+                if (opt !== "total") {
+                    const activeWeeks = coderankData.get(opt).weeks.reduce((wks, entry) => {
+                        if (entry.added > 0 || entry.deleted > 0) {
+                            wks.push(entry.week);
+                        }
+                        return wks;
+                    }, []);
+                    constructSelect("week-select", ["..."].concat(...activeWeeks), {
+                        optionText: ["..."].concat(
+                            ...activeWeeks.map((week) => getISODateOfWeek(week, opt))
+                        ),
+                        onChange: (week) => {
+                            initializeStatsTable(coderankData.get(opt).weeks[week - 1]);
+                        },
+                    });
+                } else {
+                    constructSelect("week-select", ["..."]);
+                }
+                initializeStatsTable(coderankData.get(opt));
+            },
+        });
         initializeStatsTable(coderankData.get("total"));
+        constructSelect("week-select", ["..."]);
     } catch (err) {
         if (err.cause === "Unsupported Schema Version") {
             console.error("Upsuported Schema Version");
@@ -12,6 +36,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 });
+
+const getISODateOfWeek = (week, year) => {
+    const day = 1 + (week - 1) * 7;
+    const date = new Date(year, 0, day);
+
+    return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+};
+
+const formatNumber = (numOrStr) => {
+    if (typeof numOrStr === "string") {
+        numOrStr = Number(numOrStr);
+    }
+    return numOrStr.toLocaleString(undefined, { maximumFractionDigits: 3 });
+};
+
+const formatKeyVal = (arrOrObj) => {
+    if (!Array.isArray(arrOrObj)) {
+        arrOrObj = Object.values(arrOrObj);
+    }
+    const [key, val] = arrOrObj;
+    return `'${key}' : ${formatNumber(val)}`;
+};
 
 /*
  * Returns a map containing yearly and total coderank data
@@ -28,10 +74,13 @@ const loadCoderankData = async () => {
         data.set(key, json);
     };
 
-    // to fetch other stats without globbing the directory of files available,
-    // start at 2024 and check for files until reaching the current year
-
     await addContentsToMap("total", "totalcoderank.json");
+
+    await Promise.all(
+        data.get("total").years.map(async (year) => {
+            await addContentsToMap(year, `coderank${year}.json`);
+        })
+    );
     return data;
 };
 
@@ -54,19 +103,21 @@ const constructKeyValueTable = (id, map) => {
     });
 };
 
-const formatNumber = (numOrStr) => {
-    if (typeof numOrStr === "string") {
-        numOrStr = Number(numOrStr);
+const constructSelect = (id, options, { optionText = null, onChange = null } = {}) => {
+    const select = document.getElementById(id);
+    select.innerHTML = "";
+    if (onChange !== null) {
+        select.addEventListener("change", function () {
+            onChange(this.value);
+        });
     }
-    return numOrStr.toLocaleString(undefined, { maximumFractionDigits: 3 });
-};
 
-const formatKeyVal = (arrOrObj) => {
-    if (!Array.isArray(arrOrObj)) {
-        arrOrObj = Object.values(arrOrObj);
-    }
-    const [key, val] = arrOrObj;
-    return `'${key}' : ${formatNumber(val)}`;
+    options.forEach((opt, i) => {
+        const option = document.createElement("option");
+        option.value = opt;
+        option.text = optionText ? optionText[i] : opt;
+        select.appendChild(option);
+    });
 };
 
 const initializeStatsTable = (coderankData) => {
@@ -76,7 +127,13 @@ const initializeStatsTable = (coderankData) => {
         ["net", formatNumber(coderankData.net)],
         ["added", formatNumber(coderankData.added)],
         ["deleted", formatNumber(coderankData.deleted)],
-        ["languages", coderankData.languages.map((entry) => entry.language).join(", ")],
+        [
+            "languages",
+            coderankData.languages
+                .map((entry) => entry.language)
+                .sort()
+                .join(", "),
+        ],
         ["average net per rank", formatNumber(coderankData.net / actualRank)],
         ["average added per rank", formatNumber(coderankData.added / actualRank)],
         ["average deleted per rank", formatNumber(coderankData.deleted / actualRank)],
@@ -137,5 +194,5 @@ const initializeStatsTable = (coderankData) => {
             ),
         ],
     ]);
-    constructKeyValueTable("header-table", rows);
+    constructKeyValueTable("stats-table", rows);
 };
