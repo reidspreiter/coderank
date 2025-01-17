@@ -56,13 +56,13 @@ export const TotalFieldsSchema = z.object({
     chars: CharMapSchema,
     rankBuffer: z.number().default(0),
     languages: z.array(LanguageSchema).default([]),
+    years: z.array(z.string()).default([]),
 });
 export type TotalFields = z.infer<typeof TotalFieldsSchema>;
 
-export const StatsSchema = z.object({
+export const StatsSchema = FieldsWithLanguageSchema.extend({
     version: VersionSchema,
     year: z.number(),
-    total: FieldsWithLanguageSchema,
     weeks: z.array(WeeklyFieldsSchema),
 });
 export type Stats = z.infer<typeof StatsSchema>;
