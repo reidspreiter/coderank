@@ -1,4 +1,4 @@
-const SUPPORTED_VERSION = "0.2.0";
+const SUPPORTED_VERSIONS = ["0.2.0"];
 
 document.addEventListener("DOMContentLoaded", async () => {
     try {
@@ -28,6 +28,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         initializeStatsTable(coderankData.get("total"));
         constructSelect("week-select", ["..."]);
+        removeLoader();
+
     } catch (err) {
         if (err.cause === "Unsupported Schema Version") {
             console.error("Upsuported Schema Version");
@@ -51,12 +53,13 @@ const formatNumber = (numOrStr) => {
     return numOrStr.toLocaleString(undefined, { maximumFractionDigits: 3 });
 };
 
-const formatKeyVal = (arrOrObj) => {
+const formatKeyVal = (arrOrObj, { quotes = false } = {}) => {
     if (!Array.isArray(arrOrObj)) {
         arrOrObj = Object.values(arrOrObj);
     }
-    const [key, val] = arrOrObj;
-    return `'${key}' : ${formatNumber(val)}`;
+    let [key, val] = arrOrObj;
+    key = quotes ? `'${key}'` : key;
+    return `${key} : ${formatNumber(val)}`;
 };
 
 /*
@@ -68,7 +71,7 @@ const loadCoderankData = async () => {
     const addContentsToMap = async (key, filename) => {
         const response = await fetch(`./coderank/${filename}`);
         const json = await response.json();
-        if (json.version !== SUPPORTED_VERSION) {
+        if (!SUPPORTED_VERSIONS.includes(json.version)) {
             throw Error("Unsupported Schema Version");
         }
         data.set(key, json);
@@ -123,7 +126,7 @@ const constructSelect = (id, options, { optionText = null, onChange = null } = {
 const initializeStatsTable = (coderankData) => {
     const actualRank = coderankData.rank + coderankData.rankBuffer / 10000;
     const rows = new Map([
-        ["rank", formatNumber(actualRank)],
+        ["rank", `${formatNumber(actualRank)} : ${formatNumber(actualRank * 10000)} individual typing actions`],
         ["net", formatNumber(coderankData.net)],
         ["added", formatNumber(coderankData.added)],
         ["deleted", formatNumber(coderankData.deleted)],
@@ -143,7 +146,8 @@ const initializeStatsTable = (coderankData) => {
                 Object.entries(coderankData.chars).reduce(
                     (max, [key, value]) => (value > max[1] ? [key, value] : max),
                     [null, -Infinity]
-                )
+                ),
+                { quotes: true }
             ),
         ],
         [
@@ -152,7 +156,8 @@ const initializeStatsTable = (coderankData) => {
                 Object.entries(coderankData.chars).reduce(
                     (min, [key, value]) => (value < min[1] ? [key, value] : min),
                     [null, Infinity]
-                )
+                ),
+                { quotes: true }
             ),
         ],
         [
@@ -195,4 +200,8 @@ const initializeStatsTable = (coderankData) => {
         ],
     ]);
     constructKeyValueTable("stats-table", rows);
+};
+
+const removeLoader = () => {
+    document.getElementById("loader").remove();
 };

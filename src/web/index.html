@@ -1,27 +1,50 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Coderank</title>
-        <link rel="icon" type="image/x-icon" href="static/images/icon.png" />
-        <link rel="stylesheet" href="static/index.css" />
-    </head>
 
-    <body>
-        <div class="container">
-            <p>
-                Stats:
-                <select name="stats-select" id="stats-select"></select>
-            </p>
-            <p>
-                Week:
-                <select name="week-select" id="week-select"></select>
-            </p>
-            <button>Collapse Stats Table</button>
-            <table id="stats-table"></table>
-            <canvas id="chart"></canvas>
-        </div>
-    </body>
-    <script src="static/index.js" type="module"></script>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coderank</title>
+    <link rel="icon" type="image/x-icon" href="static/images/icon.png" />
+    <link rel="stylesheet" href="static/index.css" />
+</head>
+
+<body>
+    <div id="loader"></div>
+    <div class="app">
+        <nav><a href="https://github.com/reidspreiter/coderank" target="_blank"><img
+                    src="./static/images/github-mark-white.png" alt="GitHub"></a></nav>
+        <article>
+            <section>
+                <div class="section-header">Quick Stats</div>
+                <div class="selection">
+                    <p>
+                        stats:
+                        <select name="stats-select" id="stats-select"></select>
+                    </p>
+                    <p>
+                        week:
+                        <select name="week-select" id="week-select"></select>
+                    </p>
+                </div>
+                <div class="table-container">
+                    <table id="stats-table"></table>
+                </div>
+            </section>
+            <section>
+                <div class="section-header">Characters</div>
+                <div class="selection"></div>
+            </section>
+            <section>
+                <div class="section-header">Languages</div>
+                <div class="selection"></div>
+            </section>
+            <section>
+                <div class="selection"></div>
+            </section>
+        </article>
+    </div>
+</body>
+<script src="static/index.js" type="module"></script>
+
 </html>
