@@ -1,6 +1,7 @@
 :root {
-    --section-bg: rgb(44, 44, 44);
+    --section-bg: rgb(40, 40, 40);
     --section-border-rad: 15px;
+    --border-color: #1b1b1b;
     --transition: 0.2s ease-in;
 }
 
@@ -60,11 +61,11 @@ section {
     transition: var(--transition);
 
     &:nth-child(3n-1) .section-header {
-        background-color: #ff00ff;
+        background-color: #df5d99;
     }
 
     &:nth-child(3n) .section-header {
-        background-color: #ff9900;
+        background-color: #e18731;
     }
 
     &:hover {
@@ -81,11 +82,19 @@ table {
     padding: 10px;
 }
 
+.visual-container {
+    padding: 30px;
+}
+
+canvas {
+    max-height: 70vh;
+}
+
 tr {
     height: 30px;
 
     &:nth-child(even) {
-        background-color: rgb(32, 32, 32);
+        background-color: var(--border-color);
     }
 }
 
@@ -113,7 +122,7 @@ td {
     min-height: 40px;
     display: flex;
     align-items: center;
-    background-color: #00ffff;
+    background-color: #48aa9f;
     max-width: 100%;
     padding: 4px 15px;
     border: 2px black;
@@ -136,8 +145,9 @@ td {
     margin-right: 5px;
 }
 
-#week-select {
-    min-width: 100px;
+#week-select,
+#lang-week-select {
+    min-width: 120px;
 }
 
 @media (max-width: 767px) {
