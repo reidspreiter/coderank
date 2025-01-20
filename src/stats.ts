@@ -166,7 +166,7 @@ export class StatsManager {
 
             await fs.writeFile(this.currFilePath, s.stringify(stats), "utf-8");
 
-            this.local = s.FieldsSchema.parse(stats.total);
+            this.local = s.FieldsSchema.parse(stats);
             if (!automatic) {
                 window.showInformationMessage(`Saved coderank data to ${this.currFilePath}`);
             }
@@ -181,7 +181,7 @@ export class StatsManager {
         try {
             const stats = await s.readJSONFile<s.Stats>(this.currFilePath, s.StatsSchema);
             if (stats) {
-                this.local = s.FieldsSchema.parse(stats.total);
+                this.local = s.FieldsSchema.parse(stats);
             }
         } catch (err) {
             window.showErrorMessage(`Error loading values from local storage: ${err}`);
@@ -211,7 +211,7 @@ export class StatsManager {
             if (filenames.length === 0) {
                 window.showWarningMessage(
                     "Could not find an existing backup file. " +
-                        "Backup files are updated on a weekly basis and removed after pushing to remote."
+                    "Backup files are updated on a weekly basis and removed after pushing to remote."
                 );
                 return;
             }

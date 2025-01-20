@@ -131,20 +131,20 @@ export function sumStatsToTotalFields(total: s.TotalFields, stats: s.Stats): s.T
     total = sumFields(
         total,
         s.TotalFieldsSchema.parse({
-            rank: stats.total.rank,
-            rankBuffer: stats.total.rankBuffer,
-            added: stats.total.added.toString(),
-            deleted: stats.total.deleted.toString(),
-            chars: stats.total.chars,
+            rank: stats.rank,
+            rankBuffer: stats.rankBuffer,
+            added: stats.added.toString(),
+            deleted: stats.deleted.toString(),
+            chars: stats.chars,
         })
     );
-    total.languages = sumLanguages(total.languages, stats.total.languages);
+    total.languages = sumLanguages(total.languages, stats.languages);
     return total;
 }
 
 export function sumProjectToStats(stats: s.Stats, project: s.WeeklyFields): s.Stats {
-    stats.total = sumFields(stats.total, project);
-    stats.total.languages = sumLanguages(stats.total.languages, project.languages);
+    stats = sumFields(stats, project);
+    stats.languages = sumLanguages(stats.languages, project.languages);
 
     let statsWeek = stats.weeks[project.week - 1];
     statsWeek = sumFields(statsWeek, project);
@@ -160,8 +160,8 @@ export function sumTotalFields(base: s.TotalFields, addend: s.TotalFields): s.To
 }
 
 export function sumStats(base: s.Stats, addend: s.Stats): s.Stats {
-    base.total = sumFields(base.total, addend.total);
-    base.total.languages = sumLanguages(base.total.languages, addend.total.languages);
+    base = sumFields(base, addend);
+    base.languages = sumLanguages(base.languages, addend.languages);
 
     addend.weeks.forEach((week, index) => {
         let baseWeek = base.weeks[index];
