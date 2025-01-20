@@ -1,11 +1,11 @@
 :root {
-    --section-bg: #282828;
-    --alternate-bg: #181818;
+    --bg: #282828;
+    --alt-bg: #181818;
     --text: whitesmoke;
     --blue: #48aa9f;
     --orange: #e18731;
     --pink: #df5d99;
-    --section-border-radius: 15px;
+    --section-radius: 15px;
     --transition: 0.2s ease-in;
 }
 
@@ -19,13 +19,36 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--section-bg);
+    background: var(--bg);
     border-radius: 5px;
     transition: var(--transition);
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text);
+}
+
+.scroll {
+    overflow-y: auto;
+    height: 60vh;
+    margin: 10px 10px 20px 0px;
+    padding: 10px;
+
+    &::-webkit-scrollbar {
+        background-color: transparent;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--alt-bg);
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: var(--text);
+    }
 }
 
 body {
@@ -37,6 +60,12 @@ body {
     font-family: monospace;
     color: var(--text);
     width: 100%;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 nav {
@@ -54,12 +83,18 @@ article {
     width: 50%;
 }
 
+@media (max-width: 800px) {
+    article {
+        width: 94%;
+    }
+}
+
 section {
-    background-color: var(--section-bg);
+    background-color: var(--bg);
     margin-bottom: 40px;
     margin-top: 10px;
     border: 1px solid black;
-    border-radius: var(--section-border-radius);
+    border-radius: var(--section-radius);
     transition: var(--transition);
 
     &:nth-child(3n-2):hover {
@@ -97,49 +132,11 @@ table {
     width: 100%;
 }
 
-.table-container {
-    padding: 10px;
-}
-
-.visual-container {
-    padding: 30px;
-}
-
-.restrict-height {
-    max-height: 70vh;
-}
-
-.scroll {
-    overflow-y: auto;
-    height: 60vh;
-    margin: 10px 10px 20px 0px;
-    padding: 10px;
-
-    &::-webkit-scrollbar {
-        width: 10px;
-        background-color: transparent;
-    }
-
-    &::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: var(--alternate-bg);
-        border-radius: 5px;
-        transition: var(--transition);
-    }
-
-    &::-webkit-scrollbar-thumb:hover {
-        background: var(--text);
-    }
-}
-
 tr {
     height: 30px;
 
     &:nth-child(even) {
-        background-color: var(--alternate-bg);
+        background-color: var(--alt-bg);
     }
 }
 
@@ -147,20 +144,8 @@ td {
     padding: 5px;
 }
 
-#loader {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 99;
-    height: 100%;
-    width: 100%;
-    background-color: black;
-}
-
-.app {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+.restrict-height {
+    max-height: 70vh;
 }
 
 .section-header {
@@ -170,7 +155,7 @@ td {
     max-width: 100%;
     padding: 4px 15px;
     border: 2px black;
-    border-radius: var(--section-border-radius) var(--section-border-radius) 0 0;
+    border-radius: var(--section-radius) var(--section-radius) 0 0;
     color: black;
     font-weight: bold;
     font-size: 20px;
@@ -191,19 +176,82 @@ td {
     margin: 0px;
 }
 
-#week-select,
-#lang-week-select,
-#char-week-select,
-#char-lang-select {
+.long-select {
     min-width: 120px;
 }
 
-#char-num-select {
+.medium-select {
     min-width: 80px;
 }
 
-@media (max-width: 800px) {
-    article {
-        width: 94%;
+#loader {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    top: 0;
+    left: 0;
+    z-index: 99;
+    height: 100%;
+    width: 100%;
+    background-color: black;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+    border: 3px solid;
+    border-color: var(--blue) var(--blue) transparent transparent;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+.spinner::after,
+.spinner::before {
+    content: '';
+    box-sizing: border-box;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    border: 3px solid;
+    border-color: transparent transparent var(--pink) var(--pink);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    box-sizing: border-box;
+    animation: rotationBack 0.5s linear infinite;
+    transform-origin: center center;
+}
+
+.spinner::before {
+    width: 32px;
+    height: 32px;
+    border-color: var(--orange) var(--orange) transparent transparent;
+    animation: rotation 1.5s linear infinite;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes rotationBack {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(-360deg);
     }
 }

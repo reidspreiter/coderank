@@ -1,100 +1,98 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Coderank</title>
-        <link rel="icon" type="image/x-icon" href="static/images/icon.png" />
-        <link rel="stylesheet" href="static/index.css" />
-    </head>
 
-    <body>
-        <div id="loader"></div>
-        <div class="app">
-            <nav>
-                <a href="https://github.com/reidspreiter/coderank" target="_blank"
-                    ><img src="./static/images/github-mark-white.png" alt="GitHub"
-                /></a>
-            </nav>
-            <article>
-                <section>
-                    <div class="section-header">Quick Stats</div>
-                    <div class="selection">
-                        <p>
-                            stats:
-                            <select name="stats-select" id="stats-select"></select>
-                        </p>
-                        <p>
-                            week:
-                            <select name="week-select" id="week-select"></select>
-                        </p>
-                    </div>
-                    <div class="table-container">
-                        <table id="stats-table"></table>
-                    </div>
-                </section>
-                <section>
-                    <div class="section-header">Languages</div>
-                    <div class="selection">
-                        <p>
-                            stats:
-                            <select name="lang-stats-select" id="lang-stats-select"></select>
-                        </p>
-                        <p>
-                            week:
-                            <select name="lang-week-select" id="lang-week-select"></select>
-                        </p>
-                        <p>
-                            value:
-                            <select name="lang-value-select" id="lang-value-select"></select>
-                        </p>
-                    </div>
-                    <div class="visual-container">
-                        <canvas
-                            id="lang-chart"
-                            role="img"
-                            aria-label="Languages chart"
-                            class="restrict-height"
-                        >
-                            <p>Languages chart</p>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Coderank</title>
+    <link rel="icon" type="image/x-icon" href="static/images/icon.png" />
+    <link rel="stylesheet" href="static/index.css" />
+</head>
+
+<body>
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+    <div id="app" style="display: none;">
+        <nav>
+            <a href="https://github.com/reidspreiter/coderank" target="_blank"><img
+                    src="./static/images/github-mark-white.png" alt="GitHub" /></a>
+        </nav>
+        <article>
+            <section>
+                <div class="section-header">Quick Stats</div>
+                <div class="selection">
+                    <p>
+                        stats:
+                        <select name="stats-select" id="stats-select"></select>
+                    </p>
+                    <p>
+                        week:
+                        <select name="week-select" id="week-select" class="long-select"></select>
+                    </p>
+                </div>
+                <div style="padding: 10px">
+                    <table id="stats-table"></table>
+                </div>
+            </section>
+            <section>
+                <div class="section-header">Languages</div>
+                <div class="selection">
+                    <p>
+                        stats:
+                        <select name="lang-stats-select" id="lang-stats-select"></select>
+                    </p>
+                    <p>
+                        week:
+                        <select name="lang-week-select" id="lang-week-select" class="long-select"></select>
+                    </p>
+                    <p>
+                        value:
+                        <select name="lang-value-select" id="lang-value-select"></select>
+                    </p>
+                </div>
+                <div style="padding: 30px">
+                    <canvas id="lang-chart" role="img" aria-label="Languages chart" class="restrict-height">
+                        <p>Languages chart</p>
+                    </canvas>
+                </div>
+            </section>
+            <section>
+                <div class="section-header">Characters</div>
+                <div class="selection">
+                    <p>
+                        stats:
+                        <select name="char-stats-select" id="char-stats-select"></select>
+                    </p>
+                    <p>
+                        week:
+                        <select name="char-week-select" id="char-week-select" class="long-select"></select>
+                    </p>
+                    <p>
+                        language:
+                        <select name="char-lang-select" id="char-lang-select" class="long-select"></select>
+                    </p>
+                    <p>
+                        num:
+                        <select name="char-num-select" id="char-num-select" class="medium-select"></select>
+                    </p>
+                    <p>
+                        order:
+                        <select name="char-order-select" id="char-order-select"></select>
+                    </p>
+                </div>
+                <div class="scroll restrict-height">
+                    <div style="height: 300px">
+                        <canvas id="char-chart" role="img" aria-label="Characters chart">
+                            <p>Characters chart</p>
                         </canvas>
                     </div>
-                </section>
-                <section>
-                    <div class="section-header">Characters</div>
-                    <div class="selection">
-                        <p>
-                            stats:
-                            <select name="char-stats-select" id="char-stats-select"></select>
-                        </p>
-                        <p>
-                            week:
-                            <select name="char-week-select" id="char-week-select"></select>
-                        </p>
-                        <p>
-                            language:
-                            <select name="char-lang-select" id="char-lang-select"></select>
-                        </p>
-                        <p>
-                            num:
-                            <select name="char-num-select" id="char-num-select"></select>
-                        </p>
-                        <p>
-                            order:
-                            <select name="char-order-select" id="char-order-select"></select>
-                        </p>
-                    </div>
-                    <div class="scroll restrict-height">
-                        <div style="height: 300px">
-                            <canvas id="char-chart" role="img" aria-label="Characters chart">
-                                <p>Characters chart</p>
-                            </canvas>
-                        </div>
-                    </div>
-                </section>
-            </article>
-        </div>
-    </body>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="static/index.js"></script>
+                </div>
+            </section>
+        </article>
+    </div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="static/index.js"></script>
+
 </html>
