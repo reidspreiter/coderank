@@ -27,12 +27,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         initializeCharChart(coderankData);
         removeLoader();
     } catch (err) {
-        if (err.cause === "Unsupported Schema Version") {
-            console.error("UpsupPorted Schema Version");
-        } else {
-            console.error(`Error loading coderank data: ${err}`);
-            throw err;
-        }
+        showAlertModal(
+            `Encountered an error while initializing Coderank web viewer:\n\n${err}\n\nPlease submit a bug report below:`
+        );
+        throw err;
     }
 });
 
@@ -88,7 +86,9 @@ const loadCoderankData = async () => {
         const response = await fetch(`./coderank/${filename}`);
         const json = await response.json();
         if (!SUPPORTED_VERSIONS.includes(json.version)) {
-            throw Error("Unsupported Schema Version");
+            showAlertModal(
+                `Unsupported schema version '${json.version}' detected for '${filename}' file. Expected ${SUPPORTED_VERSIONS}.\n\nThis may cause issues.\n\nPlease update your Coderank web viewer. If you have already updated your web viewer, please submit a bug report below:`
+            );
         }
         data.set(key, json);
     };
@@ -570,6 +570,16 @@ const initializeCharChart = (coderankData) => {
     selectVal("char-order-select", "desc. amount");
     selectVal("char-num-select", "5");
     selectVal("char-stats-select", "total");
+};
+
+const showAlertModal = (message) => {
+    document.getElementById("modal-message").innerText = message;
+    document.getElementById("modal").style.display = "block";
+};
+
+const closeAlertModal = () => {
+    document.getElementById("modal").style.display = "none";
+    modal.innerText = "";
 };
 
 const removeLoader = () => {
