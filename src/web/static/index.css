@@ -105,12 +105,20 @@ section {
         background-color: var(--blue);
     }
 
+    &:nth-child(3n-2) select:hover {
+        border-color: var(--blue);
+    }
+
     &:nth-child(3n-1):hover {
         border-color: var(--pink);
     }
 
     &:nth-child(3n-1) .section-header {
         background-color: var(--pink);
+    }
+
+    &:nth-child(3n-1) select:hover {
+        border-color: var(--pink);
     }
 
     &:nth-child(3n):hover {
@@ -120,11 +128,17 @@ section {
     &:nth-child(3n) .section-header {
         background-color: var(--orange);
     }
+
+    &:nth-child(3n) select:hover {
+        border-color: var(--orange);
+    }
 }
 
 select {
     background-color: var(--text);
+    border: 2px solid transparent;
     border-radius: 5px;
+    transition: var(--transition);
 }
 
 table {
