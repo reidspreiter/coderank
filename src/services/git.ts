@@ -4,7 +4,7 @@ import path from "path";
 import simpleGit from "simple-git";
 import { window, ExtensionContext } from "vscode";
 
-import { getDate } from "../util/common";
+import { getDate } from "../util";
 
 export class Git {
     private constructor(
@@ -66,10 +66,11 @@ export class Git {
         await fs.writeFile(path.join(this.remoteCoderankDir, "README.md"), getREADMEContent());
     }
 
-    async pushRepo(): Promise<void> {
+    async pushRepo(message?: string): Promise<void> {
+        message = message || getDate();
         const git = simpleGit(this.repoDir);
         await git.add("./*");
-        await git.commit(`coderank: ${getDate()}`);
+        await git.commit(`coderank: ${message}`);
         await git.push("origin", this.branch);
     }
 
