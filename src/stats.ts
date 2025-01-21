@@ -7,7 +7,7 @@ import { ExtensionContext, window, QuickPickItem, ProgressLocation, TextEditor }
 
 import * as s from "./schemata";
 import { Git, Logger } from "./services";
-import { getYear, getWeek, getDirectoryFiles, RANK_SIZE } from "./util/common";
+import { getYear, getWeek, getDirectoryFiles, RANK_SIZE } from "./util";
 
 const zip = promisify(gzip);
 const unzip = promisify(gunzip);
@@ -211,7 +211,7 @@ export class StatsManager {
             if (filenames.length === 0) {
                 window.showWarningMessage(
                     "Could not find an existing backup file. " +
-                    "Backup files are updated on a weekly basis and removed after pushing to remote."
+                        "Backup files are updated on a weekly basis and removed after pushing to remote."
                 );
                 return;
             }

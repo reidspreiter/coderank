@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 import { z } from "zod";
 
 import * as s from "../schemata";
-import { RANK_SIZE } from "../util/common";
+import { RANK_SIZE } from "../util";
 
 suite("Coderank Test Suite", () => {
     vscode.window.showInformationMessage("Coderank tests");

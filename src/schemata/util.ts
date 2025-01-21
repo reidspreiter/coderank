@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 
 import { ZodSchema, ZodError } from "zod";
 
-import { RANK_SIZE } from "../util/common";
+import { RANK_SIZE } from "../util";
 
 import * as s from "./schemata";
 

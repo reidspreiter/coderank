@@ -3,7 +3,7 @@ import path from "path";
 import { window, OutputChannel, TextDocumentChangeEvent } from "vscode";
 
 import { CoderankStatus } from "../extension";
-import { getTimestamp } from "../util/common";
+import { getTimestamp } from "../util";
 
 export class Logger {
     private static logger: Logger;

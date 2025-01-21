@@ -10,7 +10,7 @@ import {
 import * as s from "./schemata";
 import { Config } from "./services/config";
 import { StatsManager } from "./stats";
-import { Location } from "./util/common";
+import { Location } from "./util";
 
 type StatItemInitializationOptions = {
     label: string;
