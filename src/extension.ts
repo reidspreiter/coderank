@@ -5,7 +5,8 @@ import { ExtensionContext, window, workspace, commands } from "vscode";
 import { CoderankStatsProvider } from "./provider";
 import { getConfig, Logger } from "./services";
 import { StatsManager } from "./stats";
-import { Location } from "./util/common";
+import { Location } from "./util";
+import { initializeWebViewer } from "./web";
 
 export enum CoderankStatus {
     Normal = "normal",
@@ -151,16 +152,22 @@ export async function activate(context: ExtensionContext) {
     );
 
     context.subscriptions.push(
+        commands.registerCommand("coderank.dumpLocalToRemote", async () => {
+            stats.dumpLocalToRemote(context, config.saveCredentials);
+        })
+    );
+
+    context.subscriptions.push(
         commands.registerCommand("coderank.loadBackup", async () => {
             stats.loadBackup();
         })
     );
 
     context.subscriptions.push(
-        commands.registerCommand("coderank.dumpLocalToRemote", async () => {
-            stats.dumpLocalToRemote(context, config.saveCredentials);
+        commands.registerCommand("coderank.initializeWebViewer", async () => {
+            initializeWebViewer(context, config.saveCredentials);
         })
     );
 }
 
-export function deactivate() { }
+export function deactivate() {}
