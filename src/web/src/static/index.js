@@ -112,6 +112,27 @@ const loadCoderankData = async () => {
     return data;
 };
 
+//
+// To reduce file size, language-specific chars are not computed for yearly totals
+// They may be added in the future if performance demands it
+//
+const parseAllWeekLangs = (coderankData, language, doWithEntry) => {
+    for (const [key, data] of coderankData) {
+        if (key !== "total") {
+            parseWeekLangs(data, language, doWithEntry);
+        }
+    }
+};
+
+const parseWeekLangs = (data, language, doWithEntry) => {
+    data.weeks.forEach((week) => {
+        const entry = week.languages.find((entry) => entry.language === language);
+        if (entry !== undefined) {
+            doWithEntry(entry);
+        }
+    });
+};
+
 const sumChars = (base, addend) => {
     for (const [key, val] of Object.entries(addend)) {
         base[key] = (base[key] ?? 0) + val;
@@ -460,24 +481,20 @@ const initializeCharChart = (coderankData) => {
         const num = numSelect.value;
         const order = orderSelect.value;
         let data = coderankData.get(stats);
-        if (!(stats === "total" || (week === "all" && language === "all"))) {
-            if (week === "all") {
-                // To reduce file size, language-specific chars are not computed for yearly totals
-                // They may be added in the future if performance demands it
-                let chars = {};
-                data.weeks.forEach((week) => {
-                    const entry = week.languages.find((entry) => entry.language === language);
-                    if (entry !== undefined) {
-                        chars = sumChars(chars, entry.chars);
-                    }
-                });
-                populateCharChart(chars, num, order);
-                return;
-            } else {
-                data = data.weeks[week - 1];
-                if (language !== "all") {
-                    data = data.languages.find((entry) => entry.language === language);
-                }
+        if ((stats === "total" || week === "all") && language !== "all") {
+            let chars = {};
+            const doWithEntry = (entry) => {
+                chars = sumChars(chars, entry.chars);
+            };
+            stats === "total"
+                ? parseAllWeekLangs(coderankData, language, doWithEntry)
+                : parseWeekLangs(data, language, doWithEntry);
+            populateCharChart(chars, num, order);
+            return;
+        } else if (stats !== "total" && week !== "all") {
+            data = data.weeks[week - 1];
+            if (language !== "all") {
+                data = data.languages.find((entry) => entry.language === language);
             }
         }
         populateCharChart(data.chars, num, order);
@@ -489,22 +506,19 @@ const initializeCharChart = (coderankData) => {
         let data = coderankData.get(stats);
         let total;
 
-        if (!(stats === "total" || (week === "all" && language === "all"))) {
-            if (week === "all") {
+        if (language !== "all") {
+            if (stats === "total" || week === "all") {
                 const charSet = new Set();
-                data.weeks.forEach((week) => {
-                    const entry = week.languages.find((entry) => entry.language === language);
-                    if (entry !== undefined) {
-                        Object.keys(entry.chars).forEach((char) => charSet.add(char));
-                    }
-                });
+                const doWithEntry = (entry) =>
+                    Object.keys(entry.chars).forEach((char) => charSet.add(char));
+                stats === "total"
+                    ? parseAllWeekLangs(coderankData, language, doWithEntry)
+                    : parseWeekLangs(data, language, doWithEntry);
                 total = charSet.size;
             } else {
-                if (language !== "all") {
-                    data = data.weeks[week - 1].languages.find(
-                        (entry) => entry.language === language
-                    );
-                }
+                data = data.weeks[week - 1].languages.find(
+                    (entry) => entry.language === language
+                );
             }
         }
 
@@ -528,31 +542,29 @@ const initializeCharChart = (coderankData) => {
     };
 
     const buildLangSelect = (stats, week) => {
-        if (stats !== "total") {
-            const currLang = langSelect.value;
-            const data =
-                week === "all" ? coderankData.get(stats) : coderankData.get(stats).weeks[week - 1];
-            const validLanguages = data.languages
-                .reduce((langs, entry) => {
-                    if (entry.added > 0) {
-                        langs.push(entry.language);
-                    }
-                    return langs;
-                }, [])
-                .sort();
+        const currLang = langSelect.value;
+        let data = coderankData.get(stats);
+        if (stats !== "total" && week !== "all") {
+            data = data.weeks[week - 1];
+        }
+        const validLanguages = data.languages
+            .reduce((langs, entry) => {
+                if (entry.added > 0) {
+                    langs.push(entry.language);
+                }
+                return langs;
+            }, [])
+            .sort();
 
-            buildSelect("char-lang-select", ["all"].concat(...validLanguages), {
-                onChange: () => {
-                    buildNumSelect(stats, week, langSelect.value);
-                    update();
-                },
-            });
+        buildSelect("char-lang-select", ["all"].concat(...validLanguages), {
+            onChange: () => {
+                buildNumSelect(stats, week, langSelect.value);
+                update();
+            },
+        });
 
-            if (validLanguages.includes(currLang)) {
-                langSelect.value = currLang;
-            }
-        } else {
-            buildSelect("char-lang-select", ["n/a"]);
+        if (validLanguages.includes(currLang)) {
+            langSelect.value = currLang;
         }
     };
 
