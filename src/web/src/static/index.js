@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         removeLoader();
     } catch (err) {
         showAlertModal(
-            `Encountered an error while initializing Coderank web viewer:\n\n${err}\n\nPlease submit a bug report below:`
+            `Encountered an error while initializing Coderank web viewer:\n\n${err.stack}`
         );
         throw err;
     }
@@ -83,14 +83,23 @@ const loadCoderankData = async () => {
     const data = new Map();
 
     const addContentsToMap = async (key, filename) => {
-        const response = await fetch(`./coderank/${filename}`);
-        const json = await response.json();
-        if (!SUPPORTED_VERSIONS.includes(json.version)) {
-            showAlertModal(
-                `Unsupported schema version '${json.version}' detected for '${filename}' file. Expected ${SUPPORTED_VERSIONS}.\n\nThis may cause issues.\n\nPlease update your Coderank web viewer. If you have already updated your web viewer, please submit a bug report below:`
-            );
+        try {
+            const response = await fetch(`./coderank/${filename}`);
+            if (!response.ok) {
+                throw new Error(
+                    `Something went wrong: ${response.status} - ${response.statusText}`
+                );
+            }
+            const json = await response.json();
+            if (!SUPPORTED_VERSIONS.includes(json.version)) {
+                showAlertModal(
+                    `Unsupported schema version '${json.version}' detected for '${filename}' file. Expected ${SUPPORTED_VERSIONS}.\n\nThis may cause issues.\n\nPlease update your Coderank web viewer. If you have already updated your web viewer, please submit a bug report below:`
+                );
+            }
+            data.set(key, json);
+        } catch (err) {
+            showAlertModal(`Error fetching '${filename}':\n\n${err.stack}`);
         }
-        data.set(key, json);
     };
 
     await addContentsToMap("total", "totalcoderank.json");
@@ -573,13 +582,15 @@ const initializeCharChart = (coderankData) => {
 };
 
 const showAlertModal = (message) => {
-    document.getElementById("modal-message").innerText = message;
+    let modalMessage = document.getElementById("modal-message");
+    modalMessage.innerText += modalMessage.innerText === "" ? message : `\n\n${message}`;
+    document.getElementById("modal-message").innerText += message;
     document.getElementById("modal").style.display = "block";
 };
 
 const closeAlertModal = () => {
     document.getElementById("modal").style.display = "none";
-    modal.innerText = "";
+    document.getElementById("modal-message").innerText = "";
 };
 
 const removeLoader = () => {
