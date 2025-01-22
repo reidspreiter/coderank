@@ -124,7 +124,6 @@ export class StatsManager {
                     totalFields = s.sumStatsToTotalFields(totalFields, stats);
                 }
             }
-            totalFields.years = filenames.map((name) => name.slice(8, 12));
             await fs.writeFile(totalPath, s.stringify(totalFields), "utf-8");
         } catch (err) {
             window.showErrorMessage(`Error writing total file: ${err}`);
@@ -272,6 +271,10 @@ export class StatsManager {
         }
 
         if (newRemoteTotal) {
+            const repoFilenames = await getDirectoryFiles(repoDir, {
+                pattern: this.coderankFilePattern,
+            });
+            newRemoteTotal.years = repoFilenames.map((name) => name.slice(8, 12));
             await fs.writeFile(remoteTotalPath, s.stringify(newRemoteTotal), "utf-8");
             this.remote = newRemoteTotal.rank;
         }
