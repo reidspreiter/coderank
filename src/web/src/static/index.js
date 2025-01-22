@@ -102,10 +102,10 @@ const loadCoderankData = async () => {
         }
     };
 
-    await addContentsToMap("total", "totalcoderank.json");
+    await addContentsToMap("all", "totalcoderank.json");
 
     await Promise.all(
-        data.get("total").years.map(async (year) => {
+        data.get("all").years.map(async (year) => {
             await addContentsToMap(year, `coderank${year}.json`);
         })
     );
@@ -117,15 +117,15 @@ const loadCoderankData = async () => {
 // They may be added in the future if performance demands it
 //
 const parseAllWeekLangs = (coderankData, language, doWithEntry) => {
-    for (const [key, data] of coderankData) {
-        if (key !== "total") {
-            parseWeekLangs(data, language, doWithEntry);
+    for (const [year, yearData] of coderankData) {
+        if (year !== "all") {
+            parseWeekLangs(yearData, language, doWithEntry);
         }
     }
 };
 
-const parseWeekLangs = (data, language, doWithEntry) => {
-    data.weeks.forEach((week) => {
+const parseWeekLangs = (yearData, language, doWithEntry) => {
+    yearData.weeks.forEach((week) => {
         const entry = week.languages.find((entry) => entry.language === language);
         if (entry !== undefined) {
             doWithEntry(entry);
@@ -184,11 +184,11 @@ const buildSelect = (id, options, { optionText = null, onChange = null } = {}) =
     });
 };
 
-const buildWeekSelect = (coderankData, stats, id, onChange) => {
-    if (stats !== "total") {
-        const activeWeeks = getActiveWeeks(coderankData.get(stats));
+const buildWeekSelect = (coderankData, year, id, onChange) => {
+    if (year !== "all") {
+        const activeWeeks = getActiveWeeks(coderankData.get(year));
         buildSelect(id, ["all"].concat(...activeWeeks), {
-            optionText: ["all"].concat(...activeWeeks.map((week) => getISOWeek(week, stats))),
+            optionText: ["all"].concat(...activeWeeks.map((week) => getISOWeek(week, year))),
             onChange: onChange,
         });
     } else {
@@ -286,22 +286,22 @@ const populateStatsTable = (data) => {
 };
 
 const initializeStatsTable = (coderankData) => {
-    const statsSelect = document.getElementById("stats-select");
+    const yearSelect = document.getElementById("year-select");
     const weekSelect = document.getElementById("week-select");
     const update = () => {
-        const stats = statsSelect.value;
+        const year = yearSelect.value;
         const week = weekSelect.value;
-        const data = coderankData.get(stats);
-        populateStatsTable(stats === "total" || week === "all" ? data : data.weeks[week - 1]);
+        const data = coderankData.get(year);
+        populateStatsTable(year === "all" || week === "all" ? data : data.weeks[week - 1]);
     };
 
-    buildSelect("stats-select", coderankData.keys(), {
+    buildSelect("year-select", coderankData.keys(), {
         onChange: () => {
-            buildWeekSelect(coderankData, statsSelect.value, "week-select", update);
+            buildWeekSelect(coderankData, yearSelect.value, "week-select", update);
             update();
         },
     });
-    selectVal("stats-select", "total");
+    selectVal("year-select", "all");
 };
 
 let langChart = null;
@@ -356,20 +356,20 @@ const populateLangChart = (data, value) => {
 };
 
 const initializeLangChart = (coderankData) => {
-    const statsSelect = document.getElementById("lang-stats-select");
+    const yearSelect = document.getElementById("lang-year-select");
     const weekSelect = document.getElementById("lang-week-select");
     const valueSelect = document.getElementById("lang-value-select");
     const update = () => {
-        const stats = statsSelect.value;
+        const year = yearSelect.value;
         const week = weekSelect.value;
         const value = valueSelect.value;
-        const data = coderankData.get(stats);
-        populateLangChart(stats === "total" || week === "all" ? data : data.weeks[week - 1], value);
+        const data = coderankData.get(year);
+        populateLangChart(year === "all" || week === "all" ? data : data.weeks[week - 1], value);
     };
 
-    buildSelect("lang-stats-select", coderankData.keys(), {
+    buildSelect("lang-year-select", coderankData.keys(), {
         onChange: () => {
-            buildWeekSelect(coderankData, statsSelect.value, "lang-week-select", update);
+            buildWeekSelect(coderankData, yearSelect.value, "lang-week-select", update);
             update();
         },
     });
@@ -379,7 +379,7 @@ const initializeLangChart = (coderankData) => {
     });
 
     selectVal("lang-value-select", "added");
-    selectVal("lang-stats-select", "total");
+    selectVal("lang-year-select", "all");
 };
 
 let charChart = null;
@@ -469,29 +469,29 @@ const populateCharChart = (chars, num, order) => {
 };
 
 const initializeCharChart = (coderankData) => {
-    const statsSelect = document.getElementById("char-stats-select");
+    const yearSelect = document.getElementById("char-year-select");
     const weekSelect = document.getElementById("char-week-select");
     const langSelect = document.getElementById("char-lang-select");
     const numSelect = document.getElementById("char-num-select");
     const orderSelect = document.getElementById("char-order-select");
     const update = () => {
-        const stats = statsSelect.value;
+        const year = yearSelect.value;
         const week = weekSelect.value;
         const language = langSelect.value;
         const num = numSelect.value;
         const order = orderSelect.value;
-        let data = coderankData.get(stats);
-        if ((stats === "total" || week === "all") && language !== "all") {
+        let data = coderankData.get(year);
+        if ((year === "all" || week === "all") && language !== "all") {
             let chars = {};
             const doWithEntry = (entry) => {
                 chars = sumChars(chars, entry.chars);
             };
-            stats === "total"
+            year === "all"
                 ? parseAllWeekLangs(coderankData, language, doWithEntry)
                 : parseWeekLangs(data, language, doWithEntry);
             populateCharChart(chars, num, order);
             return;
-        } else if (stats !== "total" && week !== "all") {
+        } else if (year !== "all" && week !== "all") {
             data = data.weeks[week - 1];
             if (language !== "all") {
                 data = data.languages.find((entry) => entry.language === language);
@@ -500,18 +500,18 @@ const initializeCharChart = (coderankData) => {
         populateCharChart(data.chars, num, order);
     };
 
-    const buildNumSelect = (stats, week, language) => {
+    const buildNumSelect = (year, week, language) => {
         const currNum = Number(numSelect.value);
         const currSelectedIndex = numSelect.options.selectedIndex;
-        let data = coderankData.get(stats);
+        let data = coderankData.get(year);
         let total;
 
         if (language !== "all") {
-            if (stats === "total" || week === "all") {
+            if (year === "all" || week === "all") {
                 const charSet = new Set();
                 const doWithEntry = (entry) =>
                     Object.keys(entry.chars).forEach((char) => charSet.add(char));
-                stats === "total"
+                year === "all"
                     ? parseAllWeekLangs(coderankData, language, doWithEntry)
                     : parseWeekLangs(data, language, doWithEntry);
                 total = charSet.size;
@@ -541,10 +541,10 @@ const initializeCharChart = (coderankData) => {
                     : currNum;
     };
 
-    const buildLangSelect = (stats, week) => {
+    const buildLangSelect = (year, week) => {
         const currLang = langSelect.value;
-        let data = coderankData.get(stats);
-        if (stats !== "total" && week !== "all") {
+        let data = coderankData.get(year);
+        if (year !== "all" && week !== "all") {
             data = data.weeks[week - 1];
         }
         const validLanguages = data.languages
@@ -558,7 +558,7 @@ const initializeCharChart = (coderankData) => {
 
         buildSelect("char-lang-select", ["all"].concat(...validLanguages), {
             onChange: () => {
-                buildNumSelect(stats, week, langSelect.value);
+                buildNumSelect(year, week, langSelect.value);
                 update();
             },
         });
@@ -568,18 +568,18 @@ const initializeCharChart = (coderankData) => {
         }
     };
 
-    buildSelect("char-stats-select", coderankData.keys(), {
+    buildSelect("char-year-select", coderankData.keys(), {
         onChange: () => {
-            const stats = statsSelect.value;
-            buildWeekSelect(coderankData, stats, "char-week-select", () => {
+            const year = yearSelect.value;
+            buildWeekSelect(coderankData, year, "char-week-select", () => {
                 const week = weekSelect.value;
-                buildLangSelect(stats, week);
-                buildNumSelect(stats, week, langSelect.value);
+                buildLangSelect(year, week);
+                buildNumSelect(year, week, langSelect.value);
                 update();
             });
             const week = weekSelect.value;
-            buildLangSelect(stats, week);
-            buildNumSelect(stats, week, langSelect.value);
+            buildLangSelect(year, week);
+            buildNumSelect(year, week, langSelect.value);
             update();
         },
     });
@@ -590,7 +590,7 @@ const initializeCharChart = (coderankData) => {
 
     selectVal("char-order-select", "desc. amount");
     selectVal("char-num-select", "5");
-    selectVal("char-stats-select", "total");
+    selectVal("char-year-select", "all");
 };
 
 const showAlertModal = (message) => {
