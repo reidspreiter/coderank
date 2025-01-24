@@ -116,20 +116,32 @@ const loadCoderankData = async () => {
 // To reduce file size, language-specific chars are not computed for yearly totals
 // They may be added in the future if performance demands it
 //
-const parseAllWeekLangs = (coderankData, language, doWithEntry) => {
+const parseAllWeekLangs = (coderankData, doWithEntry, language) => {
     for (const [year, yearData] of coderankData) {
         if (year !== "all") {
-            parseWeekLangs(yearData, language, doWithEntry);
+            if (language !== undefined) {
+                parseSpecificWeekLangs(yearData, doWithEntry, language);
+            } else {
+                parseWeekLangs(yearData, doWithEntry);
+            }
         }
     }
 };
 
-const parseWeekLangs = (yearData, language, doWithEntry) => {
+const parseSpecificWeekLangs = (yearData, doWithEntry, language) => {
     yearData.weeks.forEach((week) => {
         const entry = week.languages.find((entry) => entry.language === language);
         if (entry !== undefined) {
             doWithEntry(entry);
         }
+    });
+};
+
+const parseWeekLangs = (yearData, doWithEntry) => {
+    yearData.weeks.forEach((week) => {
+        week.languages.forEach((entry) => {
+            doWithEntry(entry);
+        });
     });
 };
 
@@ -305,29 +317,21 @@ const initializeStatsTable = (coderankData) => {
 };
 
 let langChart = null;
-const populateLangChart = (data, value) => {
+const populateLangChart = (langMap, value) => {
     const canvas = document.getElementById("lang-chart");
-    const languages = [];
-    const values = [];
-
-    data.languages
-        .sort((a, b) => a.language.localeCompare(b.language))
-        .forEach((entry) => {
-            if (value === "net" || entry[value] !== 0) {
-                languages.push(entry.language);
-                values.push(value === "net" ? entry.added - entry.deleted : entry[value]);
-            }
-        });
+    const sortedLangMap = [...langMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const labels = sortedLangMap.map(([key]) => key);
+    const data = sortedLangMap.map(([, value]) => value);
 
     if (langChart === null) {
         langChart = new Chart(canvas, {
             type: "doughnut",
             data: {
-                labels: languages,
+                labels: labels,
                 datasets: [
                     {
                         label: value,
-                        data: values,
+                        data: data,
                         backgroundColor: chartColors,
                         borderColor: "#282828",
                         border: 1,
@@ -347,9 +351,9 @@ const populateLangChart = (data, value) => {
             },
         });
     } else {
-        langChart.data.labels = languages;
+        langChart.data.labels = labels;
         const dataset = langChart.data.datasets[0];
-        dataset.data = values;
+        dataset.data = data;
         dataset.label = value;
         langChart.update();
     }
@@ -359,23 +363,82 @@ const initializeLangChart = (coderankData) => {
     const yearSelect = document.getElementById("lang-year-select");
     const weekSelect = document.getElementById("lang-week-select");
     const valueSelect = document.getElementById("lang-value-select");
+    const charSelect = document.getElementById("lang-char-select");
     const update = () => {
         const year = yearSelect.value;
         const week = weekSelect.value;
         const value = valueSelect.value;
+        const char = charSelect.value;
         const data = coderankData.get(year);
-        populateLangChart(year === "all" || week === "all" ? data : data.weeks[week - 1], value);
+        if (year !== "all" && week !== "all") {
+            data = data.weeks[week - 1];
+        }
+        const langMap = new Map();
+        if (char === "all" || char === "n/a") {
+            data.languages.forEach((entry) => {
+                if (value === "net" || entry[value] !== 0) {
+                    langMap.set(
+                        entry.language,
+                        value === "net" ? entry.added - entry.deleted : entry[value]
+                    );
+                }
+            });
+        } else {
+            const doWithEntry = (entry) => {
+                if (char in entry.chars) {
+                    console.log("found", char);
+                    langMap.set(
+                        entry.language,
+                        (langMap.get(entry.language) ?? 0) + entry.chars[char]
+                    );
+                }
+            };
+            year === "all"
+                ? parseAllWeekLangs(coderankData, doWithEntry)
+                : week === "all"
+                    ? parseWeekLangs(data, doWithEntry)
+                    : data.languages.forEach((entry) => doWithEntry(entry));
+        }
+        console.log(langMap);
+        populateLangChart(langMap, value);
+    };
+
+    const buildCharSelect = (year, week, value) => {
+        if (value === "added") {
+            const currChar = charSelect.value;
+            data = coderankData.get(year);
+            if (year !== "all" && week !== "all") {
+                data = data.weeks[week - 1];
+            }
+            const chars = Object.keys(data.chars).sort();
+            buildSelect("lang-char-select", ["all"].concat(...chars), {
+                optionText: ["all"].concat(...chars.map((char) => fmtChar(char))),
+                onChange: update,
+            });
+            if (chars.includes(currChar)) {
+                charSelect.value = currChar;
+            }
+        } else {
+            buildSelect("lang-char-select", ["n/a"]);
+        }
     };
 
     buildSelect("lang-year-select", coderankData.keys(), {
         onChange: () => {
-            buildWeekSelect(coderankData, yearSelect.value, "lang-week-select", update);
+            buildWeekSelect(coderankData, yearSelect.value, "lang-week-select", () => {
+                buildCharSelect(yearSelect.value, weekSelect.value, valueSelect.value);
+                update();
+            });
+            buildCharSelect(yearSelect.value, weekSelect.value, valueSelect.value);
             update();
         },
     });
 
     buildSelect("lang-value-select", ["added", "deleted", "net"], {
-        onChange: update,
+        onChange: () => {
+            buildCharSelect(yearSelect.value, weekSelect.value, valueSelect.value);
+            update();
+        },
     });
 
     selectVal("lang-value-select", "added");
@@ -487,8 +550,8 @@ const initializeCharChart = (coderankData) => {
                 chars = sumChars(chars, entry.chars);
             };
             year === "all"
-                ? parseAllWeekLangs(coderankData, language, doWithEntry)
-                : parseWeekLangs(data, language, doWithEntry);
+                ? parseAllWeekLangs(coderankData, doWithEntry, language)
+                : parseSpecificWeekLangs(data, doWithEntry, language);
             populateCharChart(chars, num, order);
             return;
         } else if (year !== "all" && week !== "all") {
@@ -512,13 +575,11 @@ const initializeCharChart = (coderankData) => {
                 const doWithEntry = (entry) =>
                     Object.keys(entry.chars).forEach((char) => charSet.add(char));
                 year === "all"
-                    ? parseAllWeekLangs(coderankData, language, doWithEntry)
-                    : parseWeekLangs(data, language, doWithEntry);
+                    ? parseAllWeekLangs(coderankData, doWithEntry, language)
+                    : parseSpecificWeekLangs(data, doWithEntry, language);
                 total = charSet.size;
             } else {
-                data = data.weeks[week - 1].languages.find(
-                    (entry) => entry.language === language
-                );
+                data = data.weeks[week - 1].languages.find((entry) => entry.language === language);
             }
         }
 

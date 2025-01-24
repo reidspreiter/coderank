@@ -135,6 +135,7 @@ section {
 }
 
 select {
+    font-family: monospace;
     background-color: var(--text);
     border: 2px solid transparent;
     border-radius: 5px;
@@ -191,11 +192,15 @@ td {
 }
 
 .long-select {
-    min-width: 120px;
+    min-width: 150px;
 }
 
 .medium-select {
-    min-width: 80px;
+    min-width: 100px;
+}
+
+.short-select {
+    min-width: 70px;
 }
 
 #loader {
