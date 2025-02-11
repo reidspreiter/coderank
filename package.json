@@ -34,23 +34,14 @@
   "contributes": {
     "commands": [
       {
-        "command": "coderank.refreshProject",
-        "title": "Refresh project data",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "coderank.dumpProjectToLocal",
-        "title": "Add project data to local storage",
+        "command": "coderank.flushBuffer",
+        "title": "Flush buffer to local storage",
         "icon": "$(desktop-download)"
       },
       {
-        "command": "coderank.dumpLocalToRemote",
-        "title": "Add local data to remote repository",
+        "command": "coderank.flushLocalToRemote",
+        "title": "Flush local storage to remote repository",
         "icon": "$(cloud-upload)"
-      },
-      {
-        "command": "coderank.loadBackup",
-        "title": "Load backup file"
       },
       {
         "command": "coderank.initializeWebViewer",
@@ -69,30 +60,15 @@
       "type": "object",
       "title": "Coderank configuration",
       "properties": {
-        "coderank.refreshRate": {
-          "type": "number",
-          "default": 100,
-          "description": "Automatically refresh project data every `X` characters. Set to 0 to disable automatic refresh. Default = 100"
-        },
         "coderank.saveCredentials": {
           "type": "boolean",
           "default": false,
           "description": "Save GitHub username and PAT. Default = false"
         },
-        "coderank.trackCharacters": {
-          "type": "boolean",
-          "default": "true",
-          "description": "Track character values and populate a `Characters Pressed` field. Default = true"
-        },
         "coderank.autoStore": {
           "type": "boolean",
           "default": true,
           "description": "Automatically add project data to local storage on document save. Default = true"
-        },
-        "coderank.loadLocalOnStart": {
-          "type": "boolean",
-          "default": true,
-          "description": "Load data from local storage when a new window is opened. Default = true"
         },
         "coderank.debug": {
           "type": "boolean",
@@ -104,24 +80,14 @@
     "menus": {
       "view/title": [
         {
-          "command": "coderank.refreshProject",
+          "command": "coderank.flushBuffer",
           "when": "view == coderank",
           "group": "navigation"
         },
         {
-          "command": "coderank.dumpProjectToLocal",
+          "command": "coderank.flushLocalToRemote",
           "when": "view == coderank",
           "group": "navigation"
-        },
-        {
-          "command": "coderank.dumpLocalToRemote",
-          "when": "view == coderank",
-          "group": "navigation"
-        },
-        {
-          "command": "coderank.loadBackup",
-          "when": "view == coderank",
-          "group": "inline"
         },
         {
           "command": "coderank.initializeWebViewer",
