@@ -5,7 +5,6 @@ import { ExtensionContext, window, workspace, commands } from "vscode";
 import { CoderankStatsProvider } from "./provider";
 import { getConfig, Logger } from "./services";
 import { StatsManager } from "./stats";
-import { Location } from "./util";
 import { initializeWebViewer } from "./web";
 
 export enum CoderankStatus {
@@ -16,19 +15,10 @@ export enum CoderankStatus {
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
-    const logger = Logger.getLogger();
-    if (config.debug) {
-        logger.show();
-    }
+    const logger = Logger.getLogger(config.debug);
+    const stats = await StatsManager.init(context);
 
-    const stats = new StatsManager(context);
-    stats.updateLanguage(window.activeTextEditor);
-
-    if (config.loadLocalOnStart) {
-        await stats.loadLocal();
-    }
-
-    const provider = new CoderankStatsProvider(config, stats);
+    const provider = new CoderankStatsProvider(stats);
     window.registerTreeDataProvider("coderank", provider);
 
     context.subscriptions.push(
@@ -44,7 +34,7 @@ export async function activate(context: ExtensionContext) {
                         logger.hide();
                     }
                 }
-                provider.setStats(config, stats);
+                provider.setStats(stats);
             }
         })
     );
@@ -54,13 +44,12 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
             if (config.autoStore) {
-                await stats.dumpProjectToLocal();
-                provider.setStats(config, stats);
+                await stats.flushBuffer();
+                provider.setStats(stats);
             }
         })
     );
 
-    let refreshCounter = 0;
     let status = CoderankStatus.Normal;
     const conflictRegex = /<<<<<<< HEAD\n(.*?)=======\n(.*?)>>>>>>> .*?/s;
     context.subscriptions.push(
@@ -90,6 +79,8 @@ export async function activate(context: ExtensionContext) {
             if (status === CoderankStatus.Conflict) {
                 return;
             } else if (status === CoderankStatus.Git) {
+                // To completely avoid tracking git events,
+                // do not resume normal behavior until the user types or deletes an individual character
                 const change = event.contentChanges[0];
                 if (change.text.length === 0) {
                     if (change.rangeLength !== 1) {
@@ -119,47 +110,24 @@ export async function activate(context: ExtensionContext) {
                 if (end.line - start.line !== 0 || end.character - start.character !== 0) {
                     return;
                 }
-                const chars = config.trackChars ? change.text.repeat(changes) : "";
-                stats.handleAddition(length * changes, chars);
+                stats.handleAddition(length * changes, change.text.repeat(changes));
             } else {
                 stats.handleDeletion(length * changes);
             }
-            refreshCounter += length;
-
-            if (config.refreshRate !== 0) {
-                if (refreshCounter >= config.refreshRate) {
-                    refreshCounter = 0;
-                    provider.setFields(stats.project, Location.Project, config.trackChars);
-                }
-            } else {
-                refreshCounter = 0;
-            }
         })
     );
 
     context.subscriptions.push(
-        commands.registerCommand("coderank.refreshProject", () => {
-            refreshCounter = 0;
-            provider.setFields(stats.project, Location.Project, config.trackChars);
+        commands.registerCommand("coderank.flushBuffer", async () => {
+            await stats.flushBuffer({ showMessage: false });
+            provider.setStats(stats);
         })
     );
 
     context.subscriptions.push(
-        commands.registerCommand("coderank.dumpProjectToLocal", async () => {
-            await stats.dumpProjectToLocal(false);
-            provider.setStats(config, stats);
-        })
-    );
-
-    context.subscriptions.push(
-        commands.registerCommand("coderank.dumpLocalToRemote", async () => {
-            stats.dumpLocalToRemote(context, config.saveCredentials);
-        })
-    );
-
-    context.subscriptions.push(
-        commands.registerCommand("coderank.loadBackup", async () => {
-            stats.loadBackup();
+        commands.registerCommand("coderank.flushLocalToRemote", async () => {
+            stats.flushLocalToRemote(context, config.saveCredentials);
+            provider.setStats(stats);
         })
     );
 
