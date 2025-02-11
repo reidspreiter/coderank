@@ -16,38 +16,35 @@ export async function initializeWebViewer(
     context: ExtensionContext,
     saveCredentials: boolean
 ): Promise<void> {
-    const git = await Git.init(context, saveCredentials);
-    if (!git) {
-        return;
-    }
+    await Git.login_context(context, saveCredentials, async (git) => {
+        await window.withProgress(
+            {
+                location: ProgressLocation.Notification,
+                title: `Initializing web viewer in ${git.repo}`,
+            },
+            async (progress) => {
+                const reportProgress = (increment: number, message: string): void => {
+                    progress.report({ increment, message });
+                };
+                try {
+                    reportProgress(0, `Cloning ${git.repo}`);
+                    await git.cloneRepo();
 
-    await window.withProgress(
-        {
-            location: ProgressLocation.Notification,
-            title: `Initializing web viewer in ${git.repo}`,
-        },
-        async (progress) => {
-            const reportProgress = (increment: number, message: string): void => {
-                progress.report({ increment, message });
-            };
-            try {
-                reportProgress(0, `Cloning ${git.repo}`);
-                await git.cloneRepo();
+                    reportProgress(40, "Preparing web viewer files");
+                    await copyWebViewerFiles(context.extensionPath, git.repoDir);
 
-                reportProgress(40, "Preparing web viewer files");
-                await copyWebViewerFiles(context.extensionPath, git.repoDir);
+                    reportProgress(70, `Pushing to ${git.repoAndBranch}`);
+                    await git.pushRepo("initialized web viewer");
 
-                reportProgress(70, `Pushing to ${git.repo}/${git.branch}`);
-                await git.pushRepo("initialized web viewer");
-
-                window.showInformationMessage(
-                    `Succesfully initialized web viewer in ${git.repo}/${git.branch}`
-                );
-            } catch (err) {
-                window.showErrorMessage(`Error initializing web viewer: ${err}`);
-            } finally {
-                await git.teardown();
+                    window.showInformationMessage(
+                        `Succesfully initialized web viewer in ${git.repoAndBranch}`
+                    );
+                } catch (err) {
+                    window.showErrorMessage(`Error initializing web viewer: ${err}`);
+                } finally {
+                    await git.teardown();
+                }
             }
-        }
-    );
+        );
+    });
 }
