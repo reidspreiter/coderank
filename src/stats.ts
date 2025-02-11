@@ -1,91 +1,116 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { promisify } from "util";
-import { gzip, gunzip } from "zlib";
 
-import { ExtensionContext, window, QuickPickItem, ProgressLocation, TextEditor } from "vscode";
+import { ExtensionContext, window, ProgressLocation, TextEditor } from "vscode";
 
-import * as s from "./schemata";
 import { Git, Logger } from "./services";
-import { getYear, getWeek, getDirectoryFiles, RANK_SIZE } from "./util";
-
-const zip = promisify(gzip);
-const unzip = promisify(gunzip);
+import * as s from "./shemas";
+import { getYear, getWeek, RANK_INCREMENT, CODERANK_FILENAME } from "./util";
 
 const logger = Logger.getLogger();
 
-class FileNameItem implements QuickPickItem {
-    label: string;
-
-    constructor(label: string) {
-        this.label = label;
-    }
-}
-
 export class StatsManager {
-    private totalFilename: string = "totalcoderank.json";
-    private coderankFilePattern: RegExp = /^coderank.*\d{4}\.json$/;
-    private coderankDir: string;
-    private currFilePath: string;
-    private currLanguage: string;
-    private week: number;
-    private year: number;
-    project: s.WeeklyFields;
-    local: s.Fields;
-    remote: number;
+    private constructor(
+        private coderankDir: string,
+        private coderankFilePath: string,
+        private currLanguage: string,
+        private machine: string,
+        private project: string,
+        private week: string,
+        private year: string,
+        private buffer: s.CoderankBuffer,
+        private local: s.CoderankProviderStats,
+        private remote: s.CoderankProviderStats,
 
-    constructor(context: ExtensionContext) {
-        this.coderankDir = context.globalStorageUri.fsPath;
-        this.week = getWeek();
-        this.year = getYear();
-        this.project = s.WeeklyFieldsSchema.parse({ week: this.week });
-        this.local = s.FieldsSchema.parse({});
-        this.remote = 0;
-        this.currLanguage = "unknown";
-        this.currFilePath = path.join(this.coderankDir, this.getFileName());
+        // Local and remote data is not known until data has been flushed to local or remote
+        // These are used by the provider to ensure the data shown to the user is accurate
+        readonly flushedToLocal: boolean = false,
+        readonly flushedToRemote: boolean = false
+    ) {}
+
+    static async init(context: ExtensionContext, editor?: TextEditor): Promise<StatsManager> {
+        // This may not be necessary,
+        // but the fsPath did not exist the first time the extension was used
+        await fs.mkdir(context.globalStorageUri.fsPath, { recursive: true });
+
+        const coderankDir = context.globalStorageUri.fsPath;
+        const coderankFilePath = path.join(coderankDir, CODERANK_FILENAME);
+        const week = getWeek();
+        const year = getYear();
+        const buffer = s.CoderankBufferSchema.parse({});
+        const local = s.CoderankProviderStatsSchema.parse({});
+        const remote = s.CoderankProviderStatsSchema.parse({});
+        const currLanguage = "unknown",
+            machine = "unknown",
+            project = "unknown";
+        const manager = new StatsManager(
+            coderankDir,
+            coderankFilePath,
+            currLanguage,
+            machine,
+            project,
+            week,
+            year,
+            buffer,
+            local,
+            remote
+        );
+        manager.updateLanguage(editor);
+        return manager;
     }
 
-    private getFileName(year: number | string = this.year): string {
-        return `coderank${year}.json`;
+    get localStats(): s.CoderankProviderStats {
+        return this.local;
+    }
+
+    get remoteStats(): s.CoderankProviderStats {
+        return this.remote;
     }
 
     handleDeletion(deleted: number): void {
-        this.project.net -= deleted;
-        this.project.deleted += deleted;
-        const languageFields = s.findLanguage(this.project.languages, this.currLanguage);
-        if (languageFields) {
-            languageFields.deleted += deleted;
-        } else {
-            this.project.languages.push(
-                s.LanguageWithCharsSchema.parse({ language: this.currLanguage, deleted: deleted })
-            );
+        if (!(this.currLanguage in this.buffer.languages)) {
+            this.buffer.languages[this.currLanguage] = s.MainStatsCharsSchema.parse({});
         }
-        this.incrementRank();
+        const language = this.buffer.languages[this.currLanguage];
+
+        this.buffer.deleted += deleted;
+        language.deleted += deleted;
+        this.buffer.rank += RANK_INCREMENT;
+        language.rank += RANK_INCREMENT;
+
+        if (deleted > 1) {
+            this.buffer.deleted_cut += deleted;
+            language.deleted_cut += deleted;
+            this.buffer.num_cuts++;
+            language.num_cuts++;
+        } else {
+            this.buffer.deleted_typed++;
+            language.deleted_typed++;
+        }
     }
 
     handleAddition(added: number, chars: string): void {
-        this.project.net += added;
-        this.project.added += added;
-        this.project.chars = s.parseTextToCharMap(chars, this.project.chars);
-        const languageFields = s.findLanguage(this.project.languages, this.currLanguage);
-        if (languageFields) {
-            languageFields.added += added;
-            languageFields.chars = s.parseTextToCharMap(chars);
-        } else {
-            this.project.languages.push(
-                s.LanguageWithCharsSchema.parse({
-                    language: this.currLanguage,
-                    added: added,
-                    chars: s.parseTextToCharMap(chars),
-                })
-            );
+        if (!(this.currLanguage in this.buffer.languages)) {
+            this.buffer.languages[this.currLanguage] = s.MainStatsCharsSchema.parse({});
         }
-        this.incrementRank();
-    }
+        const language = this.buffer.languages[this.currLanguage];
 
-    private incrementRank(): void {
-        this.project.rankBuffer++;
-        this.project = s.checkRankBufferOverflow(this.project);
+        this.buffer.added += added;
+        language.added += added;
+        this.buffer.rank += RANK_INCREMENT;
+        language.rank += RANK_INCREMENT;
+        this.buffer.chars = s.parseStringToCharMap(chars, this.buffer.chars);
+        language.chars = s.parseStringToCharMap(chars, language.chars);
+
+        if (added > 1) {
+            this.buffer.added_pasted += added;
+            language.added_pasted += added;
+            this.buffer.num_pastes++;
+            language.num_pastes++;
+        } else {
+            this.buffer.added_typed++;
+            language.added_typed++;
+        }
     }
 
     updateLanguage(editor: TextEditor | undefined): void {
@@ -97,260 +122,99 @@ export class StatsManager {
         this.currLanguage = language;
     }
 
-    private async writeBackupFile(directory: string, year: number, stats: s.Stats): Promise<void> {
-        const backupDir = path.join(directory, "backups");
-        try {
-            await fs.mkdir(backupDir, { recursive: true });
-            const backupPath = path.join(backupDir, `coderankbackup${year}.json.zip`);
-            await fs.writeFile(backupPath, await zip(s.stringify(stats)), "utf-8");
-        } catch (err) {
-            window.showErrorMessage(`Error writing backup file: ${err}`);
-        }
+    private async readLocalStorage(): Promise<s.CoderankLocalFile> {
+        let stats = await s.readJSONFile<s.CoderankLocalFile>(
+            this.coderankFilePath,
+            s.CoderankLocalFileSchema
+        );
+        return stats || s.CoderankLocalFileSchema.parse({});
     }
 
-    private async writeTotalFile(directory: string): Promise<void> {
-        const totalPath = path.join(directory, this.totalFilename);
-        let totalFields = s.TotalFieldsSchema.parse({});
-        try {
-            const filenames = await getDirectoryFiles(directory, {
-                pattern: this.coderankFilePattern,
-            });
-            for (const name of filenames) {
-                const stats = await s.readJSONFile<s.Stats>(
-                    path.join(directory, name),
-                    s.StatsSchema
-                );
-                if (stats) {
-                    totalFields = s.sumStatsToTotalFields(totalFields, stats);
-                }
-            }
-            await fs.writeFile(totalPath, s.stringify(totalFields), "utf-8");
-        } catch (err) {
-            window.showErrorMessage(`Error writing total file: ${err}`);
-        }
+    private async deleteLocalStorage(): Promise<void> {
+        await fs.rm(this.coderankFilePath);
+        this.local = s.CoderankProviderStatsSchema.parse({});
     }
 
-    private async getStats(): Promise<s.Stats> {
-        let stats = await s.readJSONFile<s.Stats>(this.currFilePath, s.StatsSchema);
-
-        if (stats === null) {
-            // A new year has started. If the user used coderank last year, update backup
-            const prevYearPath = path.join(this.coderankDir, this.getFileName(this.year - 1));
-            const prevYearStats = await s.readJSONFile<s.Stats>(prevYearPath, s.StatsSchema);
-
-            if (prevYearStats !== null) {
-                await this.writeBackupFile(this.coderankDir, this.year - 1, prevYearStats);
-            }
-            stats = s.buildStats(this.year);
-        } else if (
-            stats.weeks[this.week - 1].rank === 0 &&
-            stats.weeks[this.week - 1].rankBuffer === 0
-        ) {
-            // A new week has started, update backup
-            await this.writeBackupFile(this.coderankDir, this.year, stats);
-        }
-        return stats;
-    }
-
-    async dumpProjectToLocal(automatic: boolean = true): Promise<void> {
-        const projectStatsCopy = this.project;
-        this.project = s.WeeklyFieldsSchema.parse({ week: this.week });
-        const localStatsCopy = this.local;
+    async flushBuffer(options: { showMessage: boolean } = { showMessage: false }): Promise<void> {
+        const bufferCopy = this.buffer;
+        this.buffer = s.CoderankBufferSchema.parse({});
 
         try {
-            await fs.mkdir(this.coderankDir, { recursive: true });
+            let localFile = await this.readLocalStorage();
+            localFile = s.sumBufferToLocalFile(
+                localFile,
+                bufferCopy,
+                this.year,
+                this.machine,
+                this.project
+            );
 
-            let stats = await this.getStats();
-            stats = s.sumProjectToStats(stats, projectStatsCopy);
+            await fs.writeFile(this.coderankFilePath, s.stringify(localFile), "utf-8");
 
-            await fs.writeFile(this.currFilePath, s.stringify(stats), "utf-8");
-
-            this.local = s.FieldsSchema.parse(stats);
-            if (!automatic) {
-                window.showInformationMessage(`Saved coderank data to ${this.currFilePath}`);
+            this.local = s.CoderankProviderStatsSchema.parse(localFile);
+            if (options.showMessage) {
+                window.showInformationMessage(`Saved coderank data to ${this.coderankFilePath}`);
             }
         } catch (err) {
-            this.project = projectStatsCopy;
-            this.local = localStatsCopy;
+            this.buffer = bufferCopy;
             window.showErrorMessage(`Error dumping project values to local storage: ${err}`);
         }
     }
 
-    async loadLocal(): Promise<void> {
-        try {
-            const stats = await s.readJSONFile<s.Stats>(this.currFilePath, s.StatsSchema);
-            if (stats) {
-                this.local = s.FieldsSchema.parse(stats);
-            }
-        } catch (err) {
-            window.showErrorMessage(`Error loading values from local storage: ${err}`);
-        }
-    }
+    async flushLocalToRemote(context: ExtensionContext, saveCredentials: boolean): Promise<void> {
+        await Git.login_context(context, saveCredentials, async (git) => {
+            await window.withProgress(
+                {
+                    location: ProgressLocation.Notification,
+                    title: `Pushing local values to ${git.repo}`,
+                },
+                async (progress) => {
+                    const reportProgress = (increment: number, message: string): void => {
+                        progress.report({ increment, message });
+                    };
 
-    private async deleteCoderankFiles(coderankDir: string): Promise<void> {
-        const filepaths = await getDirectoryFiles(coderankDir, {
-            pattern: this.coderankFilePattern,
-            fullPath: true,
-        });
-        for (const path of filepaths) {
-            fs.rm(path);
-        }
-        fs.rm(path.join(coderankDir, this.totalFilename));
-        this.local = s.FieldsSchema.parse({});
-    }
+                    reportProgress(0, "Flushing buffer to local storage");
+                    await this.flushBuffer();
 
-    async loadBackup(): Promise<void> {
-        const backupDir = path.join(this.coderankDir, "backups");
-        try {
-            await fs.mkdir(backupDir, { recursive: true });
-            const filenames = (
-                await getDirectoryFiles(backupDir, { pattern: /^coderank.*\d{4}\.json$/ })
-            ).sort();
+                    try {
+                        reportProgress(25, `Cloning ${git.repo}`);
+                        await git.cloneRepo();
 
-            if (filenames.length === 0) {
-                window.showWarningMessage(
-                    "Could not find an existing backup file. " +
-                        "Backup files are updated on a weekly basis and removed after pushing to remote."
-                );
-                return;
-            }
+                        reportProgress(50, "Flushing local storage to remote repository");
+                        const localFile = await this.readLocalStorage();
+                        let remoteFile = await s.readJSONFile<s.CoderankRemoteFile>(
+                            git.remoteCoderankFile,
+                            s.CoderankRemoteFileSchema
+                        );
+                        remoteFile = s.sumLocalFileToRemoteFile(
+                            remoteFile || s.CoderankRemoteFileSchema.parse({}),
+                            localFile
+                        );
+                        await fs.writeFile(
+                            git.remoteCoderankFile,
+                            s.stringify(remoteFile),
+                            "utf-8"
+                        );
 
-            const quickPickItems: FileNameItem[] = filenames.map((name) => new FileNameItem(name));
-            const backupFilename = await window.showQuickPick(quickPickItems, {
-                placeHolder: "Select a backup file to load...",
-            });
+                        reportProgress(70, `Pushing to ${git.repoAndBranch}`);
+                        await git.pushRepo();
 
-            if (!backupFilename) {
-                return;
-            }
+                        reportProgress(90, `Removing local file`);
+                        await this.deleteLocalStorage();
 
-            const match = backupFilename.label.match(/(\d{4})\.json$/);
-            if (!match) {
-                window.showErrorMessage("Error loading chosen backup file");
-                return;
-            }
+                        this.local = s.CoderankProviderStatsSchema.parse({});
+                        this.remote = s.CoderankProviderStatsSchema.parse(remoteFile);
 
-            const backupYear = match[1];
-            const backupPath = path.join(backupDir, backupFilename.label);
-            const compressedStats = await fs.readFile(backupPath, "utf-8");
-            const backupStats = (await unzip(compressedStats)).toString();
-            const overwritePath = path.join(this.coderankDir, this.getFileName(backupYear));
-
-            await fs.writeFile(overwritePath, backupStats, "utf-8");
-            await this.writeTotalFile(this.coderankDir);
-            window.showInformationMessage(`Successfully loaded ${backupPath}`);
-        } catch (err) {
-            window.showErrorMessage(`Error loading backup: ${err}`);
-        }
-    }
-
-    private async addLocalFilesToRemote(
-        coderankDir: string,
-        repoDir: string,
-        reportProgress?: (increment: number, message: string) => void
-    ) {
-        const filenames = await getDirectoryFiles(coderankDir, {
-            pattern: this.coderankFilePattern,
-        });
-
-        if (reportProgress) {
-            reportProgress(50, `Summing ${this.totalFilename}`);
-        }
-        let newRemoteTotal = await s.readJSONFile<s.TotalFields>(
-            path.join(coderankDir, this.totalFilename),
-            s.TotalFieldsSchema
-        );
-        const remoteTotalPath = path.join(repoDir, this.totalFilename);
-        const currRemoteTotal = await s.readJSONFile<s.TotalFields>(
-            remoteTotalPath,
-            s.TotalFieldsSchema
-        );
-
-        if (currRemoteTotal && newRemoteTotal) {
-            newRemoteTotal = s.sumTotalFields(newRemoteTotal, currRemoteTotal);
-        }
-
-        if (newRemoteTotal) {
-            const repoFilenames = await getDirectoryFiles(repoDir, {
-                pattern: this.coderankFilePattern,
-            });
-            newRemoteTotal.years = repoFilenames.map((name) => name.slice(8, 12));
-            await fs.writeFile(remoteTotalPath, s.stringify(newRemoteTotal), "utf-8");
-            this.remote = newRemoteTotal.rank;
-        }
-
-        for (const [index, filename] of filenames.entries()) {
-            if (reportProgress) {
-                reportProgress(50 + 19 * ((index + 1) / filenames.length), `Summing ${filename}`);
-            }
-            let newRemoteStats = await s.readJSONFile<s.Stats>(
-                path.join(coderankDir, filename),
-                s.StatsSchema
-            );
-            const remoteStatsPath = path.join(repoDir, filename);
-            const currRemoteStats = await s.readJSONFile<s.Stats>(remoteStatsPath, s.StatsSchema);
-            if (newRemoteStats && currRemoteStats) {
-                newRemoteStats = s.sumStats(currRemoteStats, newRemoteStats);
-            }
-
-            if (newRemoteStats) {
-                await fs.writeFile(remoteStatsPath, s.stringify(newRemoteStats), "utf-8");
-            }
-        }
-    }
-
-    async dumpLocalToRemote(context: ExtensionContext, saveCredentials: boolean): Promise<void> {
-        const git = await Git.init(context, saveCredentials);
-        if (!git) {
-            return;
-        }
-
-        await window.withProgress(
-            {
-                location: ProgressLocation.Notification,
-                title: `Pushing local values to ${git.repo}`,
-            },
-            async (progress) => {
-                const reportProgress = (increment: number, message: string): void => {
-                    progress.report({ increment, message });
-                };
-
-                reportProgress(0, "Dumping project to local");
-                await this.dumpProjectToLocal();
-
-                try {
-                    reportProgress(10, "Writing local total file");
-                    await this.writeTotalFile(this.coderankDir);
-
-                    reportProgress(30, `Cloning ${git.repo}`);
-                    await git.cloneRepo();
-
-                    await this.addLocalFilesToRemote(
-                        this.coderankDir,
-                        git.remoteCoderankDir,
-                        reportProgress
-                    );
-
-                    reportProgress(70, `Pushing to ${git.repo}/${git.branch}`);
-                    await git.pushRepo();
-
-                    reportProgress(90, `Removing local files`);
-                    await this.deleteCoderankFiles(this.coderankDir);
-                    if (saveCredentials) {
-                        await git.saveCredentials(context);
+                        window.showInformationMessage(
+                            `Succesfully pushed local values to ${git.repoAndBranch}`
+                        );
+                    } catch (err) {
+                        window.showErrorMessage(
+                            `Error pushing local values to remote repository: ${err}`
+                        );
                     }
-
-                    window.showInformationMessage(
-                        `Succesfully pushed local values to ${git.repo}/${git.branch}`
-                    );
-                } catch (err) {
-                    window.showErrorMessage(
-                        `Error pushing local values to remote repository: ${err}`
-                    );
-                } finally {
-                    await git.teardown();
                 }
-            }
-        );
+            );
+        });
     }
 }
