@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 
-import { ZodSchema, ZodError } from "zod";
+import * as z from "zod";
 
 import * as s from "./schemas";
 
@@ -10,17 +10,20 @@ import * as s from "./schemas";
  * @param schema zod schema to validate json
  * @returns object of `schema`, or `null` if `filePath` does not exist
  */
-export async function readJSONFile<T>(filePath: string, schema: ZodSchema): Promise<T | null> {
+export async function readJSONFile<T extends z.ZodTypeAny>(
+    filePath: string,
+    schema: T
+): Promise<z.infer<T> | null> {
     try {
         const data = await fs.readFile(filePath, "utf-8");
         const json = JSON.parse(data);
-        return schema.parse(json) as T;
+        return schema.parse(json);
     } catch (err) {
         if (err instanceof SyntaxError) {
             throw new Error(`JSON Parsing Error: filepath: '${filePath}': ${JSON.stringify(err)}`);
         }
 
-        if (err instanceof ZodError) {
+        if (err instanceof z.ZodError) {
             throw new Error(
                 `Validation Error: filepath: '${filePath}': ${JSON.stringify(err.errors)}`
             );
@@ -43,6 +46,16 @@ export async function readJSONFile<T>(filePath: string, schema: ZodSchema): Prom
  */
 export function stringify(obj: object): string {
     return JSON.stringify(obj, (_, v) => (typeof v === "bigint" ? v.toString() : v));
+}
+
+/**
+ *
+ * @param obj
+ * @param schema
+ * @returns a deep clone of `obj`
+ */
+export function clone<T extends z.ZodTypeAny>(obj: z.infer<T>, schema: T): z.infer<T> {
+    return schema.parse(JSON.parse(stringify(obj)));
 }
 
 /**
@@ -73,10 +86,10 @@ export function parseStringToCharMap(text: string, base?: s.CharMap): s.CharMap 
             base[char] = entry;
         }
     } else {
-        const entry = base[text] || s.CharMapValueSchema.parse({});
+        const entry = base[filtered_text] || s.CharMapValueSchema.parse({});
         entry.added += 1;
         entry.added_typed += 1;
-        base[text] = entry;
+        base[filtered_text] = entry;
     }
     return base;
 }
@@ -101,6 +114,7 @@ export function sumCharMaps(base: s.CharMap, addend: s.CharMap): s.CharMap {
         entry.added += stats.added;
         entry.added_typed += stats.added_typed;
         entry.added_pasted += stats.added_pasted;
+        base[char] = entry;
     }
     return base;
 }
@@ -183,7 +197,7 @@ export function sumCoderankStats<T extends s.CoderankStats, Y extends s.Coderank
 ): T {
     base = sumCoderankBuffers(base, addend);
     base.machines = sumStatsMaps(base.machines, addend.machines);
-    base.projects = sumStatsMaps(base.machines, addend.machines);
+    base.projects = sumStatsMaps(base.projects, addend.projects);
     return base;
 }
 

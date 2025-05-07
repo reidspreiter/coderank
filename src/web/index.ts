@@ -1,1 +1,1 @@
-export { initializeWebViewer } from "./web";
+export { updateWebViewer } from "./web";

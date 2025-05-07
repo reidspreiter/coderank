@@ -2,7 +2,7 @@ import path from "path";
 
 import { window, OutputChannel, TextDocumentChangeEvent } from "vscode";
 
-import { CoderankStatus } from "../extension";
+import { BufferParseStatus } from "../coderank";
 import { getTimestamp } from "../util";
 
 export class Logger {
@@ -53,7 +53,7 @@ export class Logger {
         }
     }
 
-    logTextDocumentChange(event: TextDocumentChangeEvent, status: CoderankStatus): void {
+    logTextDocumentChange(event: TextDocumentChangeEvent, status: BufferParseStatus): void {
         if (!this.enabled) {
             return;
         }

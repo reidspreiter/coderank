@@ -7,13 +7,10 @@ import {
     Event,
 } from "vscode";
 
-import * as s from "./shemas";
-import { StatsManager } from "./stats";
+import { Coderank } from "./coderank";
+import * as s from "./schemas";
 
-export enum Location {
-    Local = "local",
-    Remote = "remote",
-}
+type Location = "local" | "remote";
 
 type StatItemInitializationOptions = {
     label: string;
@@ -61,8 +58,8 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     private data: StatItem[] = [];
 
-    constructor(stats: StatsManager) {
-        this.setStats(stats);
+    constructor(coderank: Coderank) {
+        this.setStats(coderank);
     }
 
     getTreeItem(element: StatItem): TreeItem {
@@ -96,14 +93,14 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         return children;
     }
 
-    setStats(stats: StatsManager): void {
+    setStats(coderank: Coderank): void {
         this.data = [
-            stats.flushedToLocal
+            coderank.flushedToLocal
                 ? new StatItem({
-                      label: stats.localStats.rank.toString(),
+                      label: coderank.localDisplay.toString(),
                       iconPath: new ThemeIcon("device-desktop"),
                       tooltip: "local rank (1 rank = 10,000 individual user actions)",
-                      children: this.buildChildren(Location.Local, stats.localStats),
+                      children: this.buildChildren("local", coderank.localDisplay),
                       expanded: false,
                   })
                 : new StatItem({
@@ -111,12 +108,12 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
                       iconPath: new ThemeIcon("device-desktop"),
                       tooltip: "local data will be visible after the buffer is flushed",
                   }),
-            stats.flushedToRemote
+            coderank.flushedToRemote
                 ? new StatItem({
-                      label: stats.remoteStats.rank.toString(),
+                      label: coderank.remoteDisplay.rank.toString(),
                       iconPath: new ThemeIcon("cloud"),
                       tooltip: "remote rank (1 rank = 10,000 individual user actions)",
-                      children: this.buildChildren(Location.Remote, stats.remoteStats),
+                      children: this.buildChildren("remote", coderank.remoteDisplay),
                       expanded: false,
                   })
                 : new StatItem({

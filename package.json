@@ -4,7 +4,7 @@
   "description": "Track your typing habbits from anywhere",
   "version": "0.3.0",
   "repository": {
-    "type": "git",
+    "type": "github",
     "url": "https://github.com/reidspreiter/coderank.git"
   },
   "engines": {
@@ -105,7 +105,7 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts --fix",
     "format": "prettier src --write",
-    "test": "vscode-test",
+    "test": "node ./out/test/runTest.js",
     "copy-assets": "copyfiles -u 2 src/web/src/index.html src/web/src/static/** out/web"
   },
   "prettier": {
@@ -122,14 +122,16 @@
     "@types/vscode": "1.92.0",
     "@typescript-eslint/eslint-plugin": "7.18.0",
     "@typescript-eslint/parser": "7.18.0",
-    "@vscode/test-cli": "0.0.9",
-    "@vscode/test-electron": "2.4.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
     "copyfiles": "2.4.1",
     "eslint": "8.57.0",
     "eslint-config-prettier": "9.1.0",
     "eslint-import-resolver-typescript": "3.6.3",
     "eslint-plugin-import": "2.30.0",
     "eslint-plugin-prettier": "5.2.1",
+    "glob": "11.0.1",
+    "mocha": "11.1.0",
     "prettier": "3.3.3",
     "sinon": "19.0.2",
     "typescript": "5.4.5"

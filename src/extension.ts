@@ -1,24 +1,16 @@
-import path from "path";
-
 import { ExtensionContext, window, workspace, commands } from "vscode";
 
+import { Coderank } from "./coderank";
 import { CoderankStatsProvider } from "./provider";
 import { getConfig, Logger } from "./services";
-import { StatsManager } from "./stats";
-import { initializeWebViewer } from "./web";
-
-export enum CoderankStatus {
-    Normal = "normal",
-    Git = "git",
-    Conflict = "conflict",
-}
+import { updateWebViewer } from "./web";
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
-    const logger = Logger.getLogger(config.debug);
-    const stats = await StatsManager.init(context);
+    const LOG = Logger.getLogger(config.debug);
+    const coderank = await Coderank.init(context);
 
-    const provider = new CoderankStatsProvider(stats);
+    const provider = new CoderankStatsProvider(coderank);
     window.registerTreeDataProvider("coderank", provider);
 
     context.subscriptions.push(
@@ -29,113 +21,56 @@ export async function activate(context: ExtensionContext) {
 
                 if (debug !== config.debug) {
                     if (config.debug) {
-                        logger.show();
+                        LOG.show();
                     } else {
-                        logger.hide();
+                        LOG.hide();
                     }
                 }
-                provider.setStats(stats);
+                provider.setStats(coderank);
             }
         })
     );
 
-    context.subscriptions.push(window.onDidChangeActiveTextEditor(stats.updateLanguage));
+    context.subscriptions.push(
+        window.onDidChangeActiveTextEditor((editor) => {
+            coderank.buffer.updateLanguage(editor);
+        })
+    );
 
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
             if (config.autoStore) {
-                await stats.flushBuffer();
-                provider.setStats(stats);
+                await coderank.flushBuffer();
+                provider.setStats(coderank);
             }
         })
     );
 
-    let status = CoderankStatus.Normal;
-    const conflictRegex = /<<<<<<< HEAD\n(.*?)=======\n(.*?)>>>>>>> .*?/s;
     context.subscriptions.push(
         workspace.onDidChangeTextDocument((event) => {
-            const scheme = event.document.uri.scheme;
-            if (scheme === "output") {
-                // logger scheme is "output", do this to avoid endless loop
-                return;
-            }
-
-            logger.logTextDocumentChange(event, status);
-
-            // Do not track non-code events like saving the document or console output
-            const filename = path.basename(event.document.fileName);
-            if (event.contentChanges.length === 0 || scheme !== "file") {
-                if (scheme === "git") {
-                    status = CoderankStatus.Git;
-                }
-                return;
-            }
-
-            if (filename === "COMMIT_EDITMSG" || filename === "git-rebase-todo") {
-                status = CoderankStatus.Git;
-                return;
-            }
-
-            if (status === CoderankStatus.Conflict) {
-                return;
-            } else if (status === CoderankStatus.Git) {
-                // To completely avoid tracking git events,
-                // do not resume normal behavior until the user types or deletes an individual character
-                const change = event.contentChanges[0];
-                if (change.text.length === 0) {
-                    if (change.rangeLength !== 1) {
-                        return;
-                    }
-                } else {
-                    const { start, end } = change.range;
-                    if (end.line - start.line !== 0 || end.character - start.character !== 0) {
-                        return;
-                    }
-                }
-                status = CoderankStatus.Normal;
-            }
-
-            const changes = event.contentChanges.length;
-            const change = event.contentChanges[0];
-
-            // rangeLength tracks the amount of deleted characters
-            const length = change.text.length || change.rangeLength;
-
-            if (change.text.length) {
-                if (change.text.match(conflictRegex)) {
-                    status = CoderankStatus.Conflict;
-                    return;
-                }
-                const { start, end } = change.range;
-                if (end.line - start.line !== 0 || end.character - start.character !== 0) {
-                    return;
-                }
-                stats.handleAddition(length * changes, change.text.repeat(changes));
-            } else {
-                stats.handleDeletion(length * changes);
-            }
+            coderank.buffer.parseTextDocumentChangeEvent(event);
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.flushBuffer", async () => {
-            await stats.flushBuffer({ showMessage: false });
-            provider.setStats(stats);
+            await coderank.flushBuffer({ showMessage: false });
+            provider.setStats(coderank);
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.flushLocalToRemote", async () => {
-            stats.flushLocalToRemote(context, config.saveCredentials);
-            provider.setStats(stats);
+            coderank.flushLocalToRemote(context, config.saveCredentials);
+            provider.setStats(coderank);
         })
     );
 
     context.subscriptions.push(
-        commands.registerCommand("coderank.initializeWebViewer", async () => {
-            initializeWebViewer(context, config.saveCredentials);
+        commands.registerCommand("coderank.updateWebViewer", async () => {
+            updateWebViewer(context, config.saveCredentials);
         })
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }

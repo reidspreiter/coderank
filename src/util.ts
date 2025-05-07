@@ -51,3 +51,12 @@ export async function copyDirectory(src: string, dest: string): Promise<void> {
         }
     }
 }
+
+export async function pathExists(path: string): Promise<boolean> {
+    try {
+        await fs.access(path);
+        return true;
+    } catch {
+        return false;
+    }
+}
