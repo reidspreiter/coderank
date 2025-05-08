@@ -86,12 +86,12 @@ export class RemoteStorage {
         }
     }
 
-    async readCoderankFile(): Promise<s.CoderankRemoteFile> {
-        let data = await s.readJSONFile(this.coderankFilePath, s.CoderankRemoteFileSchema);
-        return data || s.CoderankRemoteFileSchema.parse({});
+    async readCoderankFile(): Promise<s.CoderankFile> {
+        let data = await s.readJSONFile(this.coderankFilePath, s.CoderankFileSchema);
+        return data || s.CoderankFileSchema.parse({});
     }
 
-    async addLocalFile(localFile: s.CoderankLocalFile): Promise<s.CoderankProviderStats> {
+    async addLocalFile(localFile: s.CoderankFile): Promise<s.CoderankProviderStats> {
         let remoteFile = await this.readCoderankFile();
         remoteFile = s.sumLocalFileToRemoteFile(remoteFile, localFile);
         await fs.writeFile(this.coderankFilePath, s.stringify(remoteFile), "utf-8");

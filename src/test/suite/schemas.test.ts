@@ -113,54 +113,35 @@ suite("Test schemas", () => {
 
         const year = "2025";
         const machine = "work";
-        const project = "gobbeldygook";
-        const mainStats = s.MainStatsSchema.parse({
-            rank: 0.004,
-            added: 5,
-            added_typed: 3,
-            added_pasted: 2,
-            num_pastes: 1,
-            deleted: 500,
-            deleted_typed: 100,
-            deleted_cut: 400,
-            num_cuts: 7,
-        });
         const chars = createCharMap({ x: 8, "7": 2 });
-        const languagesNoChars = s.LangMapSchema.parse({
+        const languages = s.LangMapSchema.parse({
             foober: {
+                rank: 0.004,
                 added: 50,
-            },
-            goo: {
+                added_typed: 3,
+                added_pasted: 2,
+                num_pastes: 1,
                 deleted: 500,
-            },
-        });
-        const languagesChars = s.LangMapCharsSchema.parse({
-            foober: {
-                added: 50,
+                deleted_typed: 100,
+                deleted_cut: 400,
+                num_cuts: 7,
                 chars: { ...chars },
             },
             goo: {
+                rank: 0.02,
                 deleted: 500,
             },
         });
-        const localFile = s.CoderankLocalFileSchema.parse({
+        const localFile = s.CoderankFileSchema.parse({
             years: {
                 [year]: s.CoderankStatsSchema.parse({
-                    ...mainStats,
-                    chars: { ...chars },
-                    languages: { ...languagesChars },
                     machines: {
                         [machine]: {
-                            ...mainStats,
-                            chars: { ...chars },
-                            languages: { ...languagesNoChars },
-                        },
-                    },
-                    projects: {
-                        [project]: {
-                            ...mainStats,
-                            chars: { ...chars },
-                            languages: { ...languagesNoChars },
+                            editors: {
+                                [s.EDITOR_NAME]: {
+                                    languages: { ...languages },
+                                },
+                            }
                         },
                     },
                 }),
@@ -168,53 +149,49 @@ suite("Test schemas", () => {
         });
         suite("Test `sumBufferToLocalFile`", () => {
             const buffer = s.CoderankBufferSchema.parse({
-                ...mainStats,
-                chars: { ...chars },
-                languages: { ...languagesChars },
+                languages: { ...languages },
             });
             test("Empty local file", () => {
                 const expected = localFile;
                 const actual = s.sumBufferToLocalFile(
-                    s.CoderankLocalFileSchema.parse({}),
+                    s.CoderankFileSchema.parse({}),
                     buffer,
                     year,
                     machine,
-                    project
                 );
                 assert.deepStrictEqual(actual, expected);
             });
 
             test("Populated local file", () => {
-                const expected = doubleObject(s.clone(localFile, s.CoderankLocalFileSchema));
+                const expected = doubleObject(s.clone(localFile, s.CoderankFileSchema));
                 const actual = s.sumBufferToLocalFile(
-                    s.clone(localFile, s.CoderankLocalFileSchema),
+                    s.clone(localFile, s.CoderankFileSchema),
                     buffer,
                     year,
                     machine,
-                    project
                 );
                 assert.deepStrictEqual(actual, expected);
             });
         });
 
         suite("Test `sumLocalFileToRemoteFile`", () => {
-            const remoteFile = s.CoderankRemoteFileSchema.parse({
+            const remoteFile = s.CoderankFileSchema.parse({
                 ...localFile.years[year],
                 ...localFile,
             });
             test("Empty remote file", () => {
                 const expected = remoteFile;
                 const actual = s.sumLocalFileToRemoteFile(
-                    s.CoderankRemoteFileSchema.parse({}),
+                    s.CoderankFileSchema.parse({}),
                     localFile
                 );
                 assert.deepStrictEqual(actual, expected);
             });
 
             test("Populated remote file", () => {
-                const expected = doubleObject(s.clone(remoteFile, s.CoderankRemoteFileSchema));
+                const expected = doubleObject(s.clone(remoteFile, s.CoderankFileSchema));
                 const actual = s.sumLocalFileToRemoteFile(
-                    s.clone(remoteFile, s.CoderankRemoteFileSchema),
+                    s.clone(remoteFile, s.CoderankFileSchema),
                     localFile
                 );
                 assert.deepStrictEqual(actual, expected);

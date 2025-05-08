@@ -12,7 +12,7 @@ export async function initializeWorkspaceContext(
     callback: (workspacePath: string) => Promise<void>
 ) {
     if (await pathExists(WORKSPACE)) {
-        throw new Error("Error initializing workspace context: workspace already exists");
+        await fs.rm(WORKSPACE, { recursive: true, force: true });
     }
     try {
         await fs.mkdir(WORKSPACE);

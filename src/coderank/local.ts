@@ -21,9 +21,9 @@ export class LocalStorage {
         return new LocalStorage(directory, coderankFilePath);
     }
 
-    async readCoderankFile(): Promise<s.CoderankLocalFile> {
-        let data = await s.readJSONFile(this.coderankFilePath, s.CoderankLocalFileSchema);
-        return data || s.CoderankLocalFileSchema.parse({});
+    async readCoderankFile(): Promise<s.CoderankFile> {
+        let data = await s.readJSONFile(this.coderankFilePath, s.CoderankFileSchema);
+        return data || s.CoderankFileSchema.parse({});
     }
 
     async clear() {
@@ -37,7 +37,6 @@ export class LocalStorage {
             buffer.data,
             buffer.year,
             buffer.machine,
-            buffer.project
         );
         await fs.writeFile(this.coderankFilePath, s.stringify(localFile), "utf-8");
         return s.CoderankProviderStatsSchema.parse(localFile);

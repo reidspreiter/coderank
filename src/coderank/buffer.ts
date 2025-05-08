@@ -18,7 +18,6 @@ export class Buffer {
         private _year: string,
         private _language: string = "unknown",
         private _machine: string = "unknown",
-        private _project: string = "unknown",
         private parseStatus: BufferParseStatus = "normal",
         private _data: s.CoderankBuffer = s.CoderankBufferSchema.parse({})
     ) {}
@@ -45,10 +44,6 @@ export class Buffer {
 
     get machine(): string {
         return this._machine;
-    }
-
-    get project(): string {
-        return this._project;
     }
 
     clear() {
@@ -120,46 +115,35 @@ export class Buffer {
 
     private handleDeletion(deleted: number): void {
         if (!(this._language in this._data.languages)) {
-            this._data.languages[this._language] = s.MainStatsCharsSchema.parse({});
+            this._data.languages[this._language] = s.MainStatsSchema.parse({});
         }
         const language = this._data.languages[this._language];
 
-        this._data.deleted += deleted;
         language.deleted += deleted;
-        this._data.rank += RANK_INCREMENT;
         language.rank += RANK_INCREMENT;
 
         if (deleted > 1) {
-            this._data.deleted_cut += deleted;
             language.deleted_cut += deleted;
-            this._data.num_cuts++;
             language.num_cuts++;
         } else {
-            this._data.deleted_typed++;
             language.deleted_typed++;
         }
     }
 
     private handleAddition(added: number, chars: string): void {
         if (!(this._language in this._data.languages)) {
-            this._data.languages[this._language] = s.MainStatsCharsSchema.parse({});
+            this._data.languages[this._language] = s.MainStatsSchema.parse({});
         }
         const language = this._data.languages[this._language];
 
-        this._data.added += added;
         language.added += added;
-        this._data.rank += RANK_INCREMENT;
         language.rank += RANK_INCREMENT;
-        this._data.chars = s.parseStringToCharMap(chars, this._data.chars);
         language.chars = s.parseStringToCharMap(chars, language.chars);
 
         if (added > 1) {
-            this._data.added_pasted += added;
             language.added_pasted += added;
-            this._data.num_pastes++;
             language.num_pastes++;
         } else {
-            this._data.added_typed++;
             language.added_typed++;
         }
     }
