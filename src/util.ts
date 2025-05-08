@@ -2,11 +2,8 @@ import { promises as fs } from "fs";
 import path from "path";
 
 export const RANK_SIZE = 10000;
-export enum Location {
-    Project = "project",
-    Local = "local",
-    Remote = "remote",
-}
+export const RANK_INCREMENT = 1 / RANK_SIZE;
+export const CODERANK_FILENAME = "coderank.json";
 
 export function getDate(): string {
     const now = new Date();
@@ -16,18 +13,18 @@ export function getDate(): string {
     return `${year}-${month}-${day}`;
 }
 
-export function getWeek(): number {
+export function getWeek(): string {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
     const days = Math.floor((now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
     const weekNumber = Math.ceil((days + 1) / 7);
-    return weekNumber;
+    return String(weekNumber);
 }
 
-export function getYear(): number {
+export function getYear(): string {
     const now = new Date();
-    return now.getFullYear();
+    return String(now.getFullYear());
 }
 
 export function getTimestamp(): string {
@@ -37,27 +34,6 @@ export function getTimestamp(): string {
     const seconds = now.getSeconds().toString().padStart(2, "0");
     const milliseconds = now.getMilliseconds().toString().padStart(3, "0");
     return `${hours}:${minutes}:${seconds}.${milliseconds}`;
-}
-
-interface GetDirectoryFilesOptions {
-    fullPath?: boolean;
-    pattern?: RegExp;
-}
-
-export async function getDirectoryFiles(
-    directory: string,
-    options: GetDirectoryFilesOptions = {}
-): Promise<string[]> {
-    const filenames: string[] = [];
-    const { fullPath = false, pattern = /.*/ } = options;
-
-    const entries = await fs.readdir(directory, { withFileTypes: true });
-    entries.forEach((entry) => {
-        if (entry.isFile() && pattern.test(entry.name)) {
-            filenames.push(fullPath ? path.join(directory, entry.name) : entry.name);
-        }
-    });
-    return filenames;
 }
 
 export async function copyDirectory(src: string, dest: string): Promise<void> {
@@ -73,5 +49,14 @@ export async function copyDirectory(src: string, dest: string): Promise<void> {
         } else {
             await fs.copyFile(srcPath, destPath);
         }
+    }
+}
+
+export async function pathExists(path: string): Promise<boolean> {
+    try {
+        await fs.access(path);
+        return true;
+    } catch {
+        return false;
     }
 }

@@ -396,8 +396,8 @@ const initializeLangChart = (coderankData) => {
             year === "all"
                 ? parseAllWeekLangs(coderankData, doWithEntry)
                 : week === "all"
-                    ? parseWeekLangs(data, doWithEntry)
-                    : data.languages.forEach((entry) => doWithEntry(entry));
+                  ? parseWeekLangs(data, doWithEntry)
+                  : data.languages.forEach((entry) => doWithEntry(entry));
         }
         console.log(langMap);
         populateLangChart(langMap, value);
@@ -454,10 +454,10 @@ const populateCharChart = (chars, num, order) => {
         order === "asc. amount"
             ? (a, b) => a[1] - b[1]
             : order === "desc. amount"
-                ? (a, b) => b[1] - a[1]
-                : order === "asc. char"
-                    ? (a, b) => a[0].localeCompare(b[0])
-                    : (a, b) => b[0].localeCompare(a[0])
+              ? (a, b) => b[1] - a[1]
+              : order === "asc. char"
+                ? (a, b) => a[0].localeCompare(b[0])
+                : (a, b) => b[0].localeCompare(a[0])
     );
 
     for (const [i, keyval] of keyvals.entries()) {
@@ -598,8 +598,8 @@ const initializeCharChart = (coderankData) => {
             currNum === 0
                 ? 5
                 : currSelectedIndex === -1 || !nums.includes(currNum)
-                    ? total
-                    : currNum;
+                  ? total
+                  : currNum;
     };
 
     const buildLangSelect = (year, week) => {

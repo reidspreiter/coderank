@@ -1,52 +1,32 @@
-import { promises as fs } from "fs";
-import path from "path";
+import * as v from "vscode";
 
-import { ExtensionContext, window, ProgressLocation } from "vscode";
+import { RemoteStorage } from "../coderank";
 
-import { Git } from "../services";
-import { copyDirectory } from "../util";
-
-async function copyWebViewerFiles(coderankDir: string, repoDir: string): Promise<void> {
-    const webPath = path.join(coderankDir, "out", "web", "src");
-    await fs.copyFile(path.join(webPath, "index.html"), path.join(repoDir, "index.html"));
-    await copyDirectory(path.join(webPath, "static"), path.join(repoDir, "static"));
-}
-
-export async function initializeWebViewer(
-    context: ExtensionContext,
+export async function updateWebViewer(
+    context: v.ExtensionContext,
     saveCredentials: boolean
 ): Promise<void> {
-    const git = await Git.init(context, saveCredentials);
-    if (!git) {
-        return;
-    }
-
-    await window.withProgress(
+    await v.window.withProgress(
         {
-            location: ProgressLocation.Notification,
-            title: `Initializing web viewer in ${git.repo}`,
+            location: v.ProgressLocation.Notification,
+            title: `Updating web viewer in remote repository`,
         },
         async (progress) => {
             const reportProgress = (increment: number, message: string): void => {
                 progress.report({ increment, message });
             };
             try {
-                reportProgress(0, `Cloning ${git.repo}`);
-                await git.cloneRepo();
-
-                reportProgress(40, "Preparing web viewer files");
-                await copyWebViewerFiles(context.extensionPath, git.repoDir);
-
-                reportProgress(70, `Pushing to ${git.repo}/${git.branch}`);
-                await git.pushRepo("initialized web viewer");
-
-                window.showInformationMessage(
-                    `Succesfully initialized web viewer in ${git.repo}/${git.branch}`
+                reportProgress(0, `Cloning remote repository`);
+                await RemoteStorage.cloneContext(context, saveCredentials, async (remote) => {
+                    reportProgress(40, "Updating web viewer files");
+                    await remote.updateWebViewer({ showMessage: true, force: true });
+                    reportProgress(70, `Pushing to remote repository`);
+                });
+                v.window.showInformationMessage(
+                    `Succesfully updated web viewer in remote repository`
                 );
             } catch (err) {
-                window.showErrorMessage(`Error initializing web viewer: ${err}`);
-            } finally {
-                await git.teardown();
+                v.window.showErrorMessage(`Error updating web viewer: ${err}`);
             }
         }
     );

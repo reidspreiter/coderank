@@ -7,10 +7,10 @@ import {
     Event,
 } from "vscode";
 
-import * as s from "./schemata";
-import { Config } from "./services/config";
-import { StatsManager } from "./stats";
-import { Location } from "./util";
+import { Coderank } from "./coderank";
+import * as s from "./schemas";
+
+type Location = "local" | "remote";
 
 type StatItemInitializationOptions = {
     label: string;
@@ -58,37 +58,8 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     private data: StatItem[] = [];
 
-    constructor(config: Config, stats: StatsManager) {
-        this.setStats(config, stats);
-    }
-
-    private getLocationIndex(location: Location): number {
-        return location === Location.Project ? 0 : location === Location.Local ? 1 : 2;
-    }
-
-    private buildCharDataChildren(charData: s.CharMap): StatItem {
-        let children = undefined;
-        const entries = Object.entries(charData);
-        if (entries.length !== 0) {
-            children = [];
-            for (const [key, value] of entries) {
-                children.push(
-                    new StatItem({
-                        label: key,
-                        description: value.toString(),
-                    })
-                );
-            }
-        }
-        const parent = new StatItem({
-            label: "chars",
-            iconPath: new ThemeIcon("output"),
-            tooltip: "amount of times characters have been pressed",
-            children,
-            expanded: false,
-            contextValue: "characterData",
-        });
-        return parent;
+    constructor(coderank: Coderank) {
+        this.setStats(coderank);
     }
 
     getTreeItem(element: StatItem): TreeItem {
@@ -106,80 +77,52 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
         this._onDidChangeTreeData.fire(null);
     }
 
-    private buildChildren(
-        location: Location,
-        fields: s.Fields,
-        trackCharacters: boolean
-    ): StatItem[] {
-        const { net, added, deleted, chars } = fields;
+    private buildChildren(location: Location, stats: s.CoderankProviderStats): StatItem[] {
         const children = [
             new StatItem({
-                label: net.toString(),
-                iconPath: new ThemeIcon("diff-modified"),
-                tooltip: `${location} additions - deletions`,
-            }),
-            new StatItem({
-                label: added.toString(),
+                label: stats.added.toString(),
                 iconPath: new ThemeIcon("diff-added"),
                 tooltip: `${location} character additions`,
             }),
             new StatItem({
-                label: deleted.toString(),
+                label: stats.deleted.toString(),
                 iconPath: new ThemeIcon("diff-removed"),
                 tooltip: `${location} character deletions`,
             }),
         ];
-        if (trackCharacters) {
-            children.push(this.buildCharDataChildren(chars));
-        }
         return children;
     }
 
-    setStats(config: Config, stats: StatsManager): void {
-        const projectChildren = this.buildChildren(
-            Location.Project,
-            stats.project,
-            config.trackChars
-        );
-        const localChildren = this.buildChildren(Location.Local, stats.local, config.trackChars);
-
+    setStats(coderank: Coderank): void {
         this.data = [
-            new StatItem({
-                label: stats.project.rank.toString(),
-                iconPath: new ThemeIcon("keyboard"),
-                tooltip: "project rank (1 rank = 10,000 individual user actions)",
-                children: projectChildren,
-            }),
-            new StatItem({
-                label: stats.local.rank.toString(),
-                iconPath: new ThemeIcon("device-desktop"),
-                tooltip: "local rank (1 rank = 10,000 individual user actions)",
-                children: localChildren,
-                expanded: false,
-            }),
-            new StatItem({
-                label: stats.remote.toString(),
-                iconPath: new ThemeIcon("cloud"),
-                tooltip: "remote rank (1 rank = 10,000 individual user actions)",
-            }),
+            coderank.flushedToLocal
+                ? new StatItem({
+                      label: coderank.localDisplay.toString(),
+                      iconPath: new ThemeIcon("device-desktop"),
+                      tooltip: "local rank (1 rank = 10,000 individual user actions)",
+                      children: this.buildChildren("local", coderank.localDisplay),
+                      expanded: false,
+                  })
+                : new StatItem({
+                      label: "...",
+                      iconPath: new ThemeIcon("device-desktop"),
+                      tooltip: "local data will be visible after the buffer is flushed",
+                  }),
+            coderank.flushedToRemote
+                ? new StatItem({
+                      label: coderank.remoteDisplay.rank.toString(),
+                      iconPath: new ThemeIcon("cloud"),
+                      tooltip: "remote rank (1 rank = 10,000 individual user actions)",
+                      children: this.buildChildren("remote", coderank.remoteDisplay),
+                      expanded: false,
+                  })
+                : new StatItem({
+                      label: "...",
+                      iconPath: new ThemeIcon("cloud"),
+                      tooltip:
+                          "remote data will be visible after the remote repository is accessed",
+                  }),
         ];
-        this.refresh();
-    }
-
-    setFields(fields: s.Fields, location: Location, refreshCharData: boolean = false): void {
-        const { rank, net, added, deleted, chars } = fields;
-        const dataFields = this.data[this.getLocationIndex(location)];
-        dataFields.label = rank.toString();
-
-        if (dataFields.children !== undefined) {
-            dataFields.children[0].label = net.toString();
-            dataFields.children[1].label = added.toString();
-            dataFields.children[2].label = deleted.toString();
-
-            if (refreshCharData) {
-                dataFields.children[3] = this.buildCharDataChildren(chars);
-            }
-        }
         this.refresh();
     }
 }

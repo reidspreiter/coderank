@@ -2,7 +2,7 @@ import path from "path";
 
 import { window, OutputChannel, TextDocumentChangeEvent } from "vscode";
 
-import { CoderankStatus } from "../extension";
+import { BufferParseStatus } from "../coderank";
 import { getTimestamp } from "../util";
 
 export class Logger {
@@ -11,26 +11,33 @@ export class Logger {
     private enabled: boolean = false;
     private label: string | null = null;
 
-    private constructor(debugEnabled: boolean | undefined) {
+    private constructor() {
         this.outputChannel = window.createOutputChannel("Coderank");
-        if (debugEnabled !== undefined) {
-            this.enabled = debugEnabled;
-        }
         this.log("Coderank has been activated");
     }
 
-    static getLogger(debugEnabled: boolean | undefined = undefined): Logger {
+    static getLogger(debugEnabled?: boolean): Logger {
         if (!Logger.logger) {
-            Logger.logger = new Logger(debugEnabled);
+            Logger.logger = new Logger();
+        }
+
+        if (debugEnabled) {
+            Logger.logger.show();
         }
         return Logger.logger;
     }
 
+    /**
+     * Shows the debug console in the VSCode terminal and allows debug messages to be emitted
+     */
     show(): void {
         this.enabled = true;
         this.outputChannel.show();
     }
 
+    /**
+     * Prevents debug logs from being emitted
+     */
     hide(): void {
         this.enabled = false;
     }
@@ -46,7 +53,7 @@ export class Logger {
         }
     }
 
-    logTextDocumentChange(event: TextDocumentChangeEvent, status: CoderankStatus): void {
+    logTextDocumentChange(event: TextDocumentChangeEvent, status: BufferParseStatus): void {
         if (!this.enabled) {
             return;
         }
