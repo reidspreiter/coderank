@@ -4,12 +4,9 @@ import path from "path";
 import * as v from "vscode";
 
 import * as s from "../schemas";
-import { Git, Logger } from "../services";
 import { CODERANK_FILENAME } from "../util";
 
 import { LocalStorage, Buffer, RemoteStorage } from ".";
-
-const LOG = Logger.getLogger();
 
 export class Coderank {
     private constructor(

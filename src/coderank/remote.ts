@@ -34,7 +34,7 @@ export class RemoteStorage {
         private directory: string,
         private coderankDir: string,
         private coderankFilePath: string
-    ) { }
+    ) {}
 
     static async cloneContext(
         context: v.ExtensionContext,
@@ -56,33 +56,46 @@ export class RemoteStorage {
     private async update() {
         await fs.mkdir(this.coderankDir, { recursive: true });
         await fs.writeFile(path.join(this.coderankDir, "README.md"), getREADMEContent());
-
     }
 
-    async updateWebViewer(options: { showMessage: boolean, force: boolean } = { showMessage: false, force: false }) {
+    async updateWebViewer(
+        options: { showMessage: boolean; force: boolean } = { showMessage: false, force: false }
+    ) {
         const webRecordPath = path.join(this.coderankDir, WEB_RECORD_FILENAME);
         const webRecord = await s.readJSONFile(webRecordPath, s.WebViewerRecordSchema);
 
         if (webRecord === null) {
-            await fs.writeFile(webRecordPath, JSON.stringify(s.WebViewerRecordSchema.parse({})), "utf-8");
+            await fs.writeFile(
+                webRecordPath,
+                JSON.stringify(s.WebViewerRecordSchema.parse({})),
+                "utf-8"
+            );
             await copyWebViewerFiles(this.coderankDir, this.directory);
             if (options.showMessage) {
-                v.window.showInformationMessage(`Updated web viewer to ${s.LATEST_WEB_VIEWER_VERSION}`);
+                v.window.showInformationMessage(
+                    `Updated web viewer to ${s.LATEST_WEB_VIEWER_VERSION}`
+                );
             }
         } else if (webRecord.version !== s.LATEST_WEB_VIEWER_VERSION) {
             webRecord.version = s.LATEST_WEB_VIEWER_VERSION;
             await fs.writeFile(webRecordPath, JSON.stringify(webRecord), "utf-8");
             await copyWebViewerFiles(this.coderankDir, this.directory);
             if (options.showMessage) {
-                v.window.showInformationMessage(`Updated web viewer to ${s.LATEST_WEB_VIEWER_VERSION}`);
+                v.window.showInformationMessage(
+                    `Updated web viewer to ${s.LATEST_WEB_VIEWER_VERSION}`
+                );
             }
         } else if (options.force) {
             await copyWebViewerFiles(this.coderankDir, this.directory);
             if (options.showMessage) {
-                v.window.showInformationMessage(`Web viewer was already up to date, but replaced web files anyways`);
+                v.window.showInformationMessage(
+                    `Web viewer was already up to date, but replaced web files anyways`
+                );
             }
         } else if (options.showMessage) {
-            v.window.showInformationMessage(`Web viewer is already up to date: ${s.LATEST_WEB_VIEWER_VERSION}`);
+            v.window.showInformationMessage(
+                `Web viewer is already up to date: ${s.LATEST_WEB_VIEWER_VERSION}`
+            );
         }
     }
 

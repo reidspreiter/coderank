@@ -122,10 +122,7 @@ export function sumMainStats<T extends s.MainStats, Y extends s.MainStats>(base:
 
 export function sumLangMaps(base: s.LangMap, addend: s.LangMap): s.LangMap {
     for (const lang in addend) {
-        base[lang] = sumMainStats(
-            base[lang] || s.MainStatsSchema.parse({}),
-            addend[lang]
-        );
+        base[lang] = sumMainStats(base[lang] || s.MainStatsSchema.parse({}), addend[lang]);
     }
     return base;
 }
@@ -150,7 +147,10 @@ export function sumMachineMaps(base: s.MachineMap, addend: s.MachineMap): s.Mach
         if (!base[key]) {
             base[key] = s.MachineMapValueSchema.parse({});
         }
-        base[key].editors = sumEditorMaps(base[key].editors || s.EditorMapValueSchema.parse({}), addend[key].editors);
+        base[key].editors = sumEditorMaps(
+            base[key].editors || s.EditorMapValueSchema.parse({}),
+            addend[key].editors
+        );
     }
     return base;
 }
@@ -159,7 +159,7 @@ export function sumBufferToLocalFile(
     localFile: s.CoderankFile,
     buffer: s.CoderankBuffer,
     year: string,
-    machine: string,
+    machine: string
 ): s.CoderankFile {
     let yearStats = localFile.years[year] || s.CoderankStatsSchema.parse({});
     if (!yearStats.machines[machine]) {

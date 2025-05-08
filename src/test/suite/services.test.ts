@@ -39,7 +39,7 @@ suite("Test services", () => {
             test("Synchronous callback", async () => {
                 mockInputs();
                 const saveCredentialsStub = sinon.stub(Git.prototype, "saveCredentials");
-                const callback = sinon.spy((repoDir: string) => { });
+                const callback = sinon.spy((repoDir: string) => {});
                 await Git.loginCloneContext(context, false, callback);
                 sinon.assert.calledOnce(callback);
                 sinon.assert.notCalled(saveCredentialsStub);
@@ -58,7 +58,7 @@ suite("Test services", () => {
 
             test("Save credentials", async () => {
                 mockInputs();
-                await Git.loginCloneContext(context, true, () => { });
+                await Git.loginCloneContext(context, true, () => {});
                 assert.strictEqual(await context.secrets.get("githubUser"), username);
                 assert.strictEqual(await context.secrets.get("githubPAT"), pat);
                 assert.strictEqual(await context.secrets.get("githubRepo"), repo);
@@ -67,7 +67,7 @@ suite("Test services", () => {
             test("No execution on unsuccessful login", async () => {
                 const saveCredentialsStub = sinon.stub(Git.prototype, "saveCredentials");
                 mockInputs(null);
-                const callback = sinon.spy((repoDir: string) => { });
+                const callback = sinon.spy((repoDir: string) => {});
                 await Git.loginCloneContext(context, false, callback);
                 sinon.assert.notCalled(callback);
                 sinon.assert.notCalled(saveCredentialsStub);

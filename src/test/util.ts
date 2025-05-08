@@ -27,3 +27,35 @@ export async function openTextDocument(file: AvailableFiles) {
     const document = await v.workspace.openTextDocument(documentUri);
     await v.window.showTextDocument(document);
 }
+
+export async function writeText(file: AvailableFiles, text: string) {
+    await openTextDocument(file);
+    const editor = v.window.activeTextEditor;
+
+    if (!editor) {
+        console.error("No active text editor");
+        return;
+    }
+
+    await editor.edit((editBuilder) => {
+        editBuilder.insert(editor.selection.active, text);
+    });
+}
+
+export async function deleteTextBeforeCursor(numChars: number) {
+    const editor = v.window.activeTextEditor;
+    if (!editor) {
+        console.error("No active text editor");
+        return;
+    }
+
+    const pos = editor.selection.active;
+
+    const newPos = Math.max(pos.character - numChars, 0);
+    const start = new v.Position(pos.line, newPos);
+    const range = new v.Range(start, pos);
+
+    await editor.edit((editBuilder) => {
+        editBuilder.delete(range);
+    });
+}

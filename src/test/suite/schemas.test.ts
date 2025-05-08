@@ -141,7 +141,7 @@ suite("Test schemas", () => {
                                 [s.EDITOR_NAME]: {
                                     languages: { ...languages },
                                 },
-                            }
+                            },
                         },
                     },
                 }),
@@ -157,7 +157,7 @@ suite("Test schemas", () => {
                     s.CoderankFileSchema.parse({}),
                     buffer,
                     year,
-                    machine,
+                    machine
                 );
                 assert.deepStrictEqual(actual, expected);
             });
@@ -168,7 +168,7 @@ suite("Test schemas", () => {
                     s.clone(localFile, s.CoderankFileSchema),
                     buffer,
                     year,
-                    machine,
+                    machine
                 );
                 assert.deepStrictEqual(actual, expected);
             });
