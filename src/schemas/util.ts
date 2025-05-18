@@ -4,6 +4,42 @@ import * as z from "zod";
 
 import * as s from "./schemas";
 
+export function shallowEqual<T extends object>(objA: T, objB: T): boolean {
+    if (objA === objB) {
+        return true;
+    }
+
+    const aKeys = Object.keys(objA) as Array<keyof T>;
+    const bKeys = Object.keys(objB) as Array<keyof T>;
+
+    if (aKeys.length !== bKeys.length) {
+        return false;
+    }
+
+    for (const key of aKeys) {
+        if (objA[key] !== objB[key]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+export function getCurrentAutoPushRecord(): s.AutoPushRecord {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const days = Math.floor((now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+    const weekNumber = Math.ceil((days + 1) / 7);
+
+    return s.AutoPushRecordSchema.parse({
+        year: String(now.getFullYear()),
+        month: String(now.getMonth() + 1),
+        week: String(weekNumber),
+        day: String(now.getDate()),
+    });
+}
+
 // TODO: If zod behavior changes, coordinate schema and T to ensure a matching schema is passed
 /**
  * @param filePath path to a json file
