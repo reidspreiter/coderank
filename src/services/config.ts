@@ -1,19 +1,21 @@
 import { workspace, ConfigurationTarget } from "vscode";
 
+import { LogVerbosity } from "./logger";
+
 type PromptToPushFrequency = "daily" | "daily-force" | "weekly" | "weekly-force" | "never";
 
 export type Config = {
     saveCredentials: boolean;
     autoStore: boolean;
-    debug: boolean;
     pushReminderFrequency: PromptToPushFrequency;
+    logVerbosity: LogVerbosity;
 };
 
 export const DEFAULT_CONFIG: Config = {
     saveCredentials: false,
     autoStore: true,
-    debug: false,
     pushReminderFrequency: "weekly",
+    logVerbosity: "",
 };
 
 export function getConfig(): Config {
@@ -21,11 +23,11 @@ export function getConfig(): Config {
     return {
         saveCredentials: config.get<boolean>("saveCredentials", DEFAULT_CONFIG.saveCredentials),
         autoStore: config.get<boolean>("autoStore", DEFAULT_CONFIG.autoStore),
-        debug: config.get<boolean>("debug", DEFAULT_CONFIG.debug),
         pushReminderFrequency: config.get<PromptToPushFrequency>(
             "pushReminderFrequency",
             DEFAULT_CONFIG.pushReminderFrequency
         ),
+        logVerbosity: config.get<LogVerbosity>("logVerbosity", DEFAULT_CONFIG.logVerbosity),
     };
 }
 
