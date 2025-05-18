@@ -63,7 +63,7 @@
         "coderank.saveCredentials": {
           "type": "boolean",
           "default": false,
-          "description": "Save GitHub username and PAT. Default = false"
+          "description": "Save GitHub username and PAT. If this is set, pushing to remote will not prompt for login information unless an error occurs. Default = false"
         },
         "coderank.autoStore": {
           "type": "boolean",
@@ -74,6 +74,12 @@
           "type": "boolean",
           "default": false,
           "description": "Logs events to the console for debug and development purposes. Default = false"
+        },
+        "coderank.pushReminderFrequency": {
+          "type": "string",
+          "enum": ["daily", "daily-force", "weekly", "weekly-force", "never"],
+          "default": "weekly",
+          "description": "How often coderank reminds you to push your data to remote on startup. Options: 'daily', 'daily-force', 'weekly', 'weekly-force', or 'never'. An option with '-force' will avoid the reminder and automatically prompt you to login. If `coderank.saveCredentials` is set, the push process will start automatically. Default = 'weekly'"
         }
       }
     },
