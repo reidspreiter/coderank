@@ -97,8 +97,12 @@ export class Coderank {
                         },
                         options
                     );
-                    
-                    await fs.writeFile(this.autoPushRecordFilePath, s.stringify(s.getCurrentAutoPushRecord()), "utf-8");
+
+                    await fs.writeFile(
+                        this.autoPushRecordFilePath,
+                        s.stringify(s.getCurrentAutoPushRecord()),
+                        "utf-8"
+                    );
 
                     reportProgress(90, `Removing local file`);
                     await this._local.clear();
@@ -129,7 +133,11 @@ export class Coderank {
         // Most likely the first time the user has activated the extension
         // Write initial push record so they will be reminded the next time a push is overdue
         if (prevPushRecord === null) {
-            await fs.writeFile(this.autoPushRecordFilePath, s.stringify(s.getCurrentAutoPushRecord()), "utf-8");
+            await fs.writeFile(
+                this.autoPushRecordFilePath,
+                s.stringify(s.getCurrentAutoPushRecord()),
+                "utf-8"
+            );
             return;
         }
 

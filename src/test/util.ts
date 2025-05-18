@@ -6,7 +6,6 @@ import { Config, DEFAULT_CONFIG } from "../services";
 
 import { AvailableFiles, WORKSPACE } from "./workspace";
 
-
 export function getTestContext(): v.ExtensionContext {
     return {
         secrets: {

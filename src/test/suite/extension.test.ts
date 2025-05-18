@@ -19,17 +19,25 @@ suite("Test extension", () => {
 
     suite("Test push reminders", () => {
         // readJSONFile is non-configurable / non-writeable to sinon so do this horrible workaround
-        const autoPushRecordFilePath = path.join(context.globalStorageUri.fsPath, AUTOPUSH_RECORD_FILENAME);
+        const autoPushRecordFilePath = path.join(
+            context.globalStorageUri.fsPath,
+            AUTOPUSH_RECORD_FILENAME
+        );
         let flushLocalToRemoteStub: sinon.SinonStub;
 
-
         beforeEach(async () => {
-            await fs.writeFile(autoPushRecordFilePath, s.stringify(s.AutoPushRecordSchema.parse({
-                year: "2025",
-                month: "02",
-                week: "7",
-                day: "20",
-            })), "utf-8");
+            await fs.writeFile(
+                autoPushRecordFilePath,
+                s.stringify(
+                    s.AutoPushRecordSchema.parse({
+                        year: "2025",
+                        month: "02",
+                        week: "7",
+                        day: "20",
+                    })
+                ),
+                "utf-8"
+            );
             flushLocalToRemoteStub = sinon.stub(coderank, "flushLocalToRemote");
         });
 
@@ -39,19 +47,29 @@ suite("Test extension", () => {
         });
 
         test("Auto push when due weekly", async () => {
-            await coderank.autoPush(context, createConfig({pushReminderFrequency: "weekly-force"}));
+            await coderank.autoPush(
+                context,
+                createConfig({ pushReminderFrequency: "weekly-force" })
+            );
             sinon.assert.calledOnce(flushLocalToRemoteStub);
         });
 
         test("Auto push when due daily", async () => {
-            await coderank.autoPush(context, createConfig({pushReminderFrequency: "daily-force"}));
+            await coderank.autoPush(
+                context,
+                createConfig({ pushReminderFrequency: "daily-force" })
+            );
             sinon.assert.calledOnce(flushLocalToRemoteStub);
         });
 
         test("Does not push when not due", async () => {
-            await fs.writeFile(autoPushRecordFilePath, s.stringify((s.getCurrentAutoPushRecord())), "utf-8");
+            await fs.writeFile(
+                autoPushRecordFilePath,
+                s.stringify(s.getCurrentAutoPushRecord()),
+                "utf-8"
+            );
             await coderank.autoPush(context, createConfig());
             sinon.assert.notCalled(flushLocalToRemoteStub);
-        }); 
+        });
     });
 });

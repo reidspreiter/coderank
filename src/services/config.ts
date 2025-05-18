@@ -22,7 +22,10 @@ export function getConfig(): Config {
         saveCredentials: config.get<boolean>("saveCredentials", DEFAULT_CONFIG.saveCredentials),
         autoStore: config.get<boolean>("autoStore", DEFAULT_CONFIG.autoStore),
         debug: config.get<boolean>("debug", DEFAULT_CONFIG.debug),
-        pushReminderFrequency: config.get<PromptToPushFrequency>("pushReminderFrequency", DEFAULT_CONFIG.pushReminderFrequency),
+        pushReminderFrequency: config.get<PromptToPushFrequency>(
+            "pushReminderFrequency",
+            DEFAULT_CONFIG.pushReminderFrequency
+        ),
     };
 }
 
