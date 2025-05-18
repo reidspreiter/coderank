@@ -4,7 +4,70 @@ import path from "path";
 import simpleGit from "simple-git";
 import { window, ExtensionContext } from "vscode";
 
-import { getDate, CODERANK_FILENAME } from "../util";
+import { getDate } from "../util";
+
+export type GitLoginOptions = {
+    saveCredentials: boolean;
+    forceLoginPrompts: boolean;
+};
+
+const defaultOptions: GitLoginOptions = {
+    saveCredentials: false,
+    forceLoginPrompts: false,
+};
+
+type GitCredentials = {
+    username: string;
+    token: string;
+    repo: string;
+};
+
+async function getGitCredentials(
+    context: ExtensionContext,
+    useSavedCredentials: boolean,
+    forceLoginPrompt: boolean
+): Promise<GitCredentials | null> {
+    const secretsUsername = await context.secrets.get("githubUser");
+    const secretsToken = await context.secrets.get("githubPAT");
+    const secretsRepo = await context.secrets.get("githubRepo");
+
+    if (
+        useSavedCredentials &&
+        !forceLoginPrompt &&
+        secretsUsername &&
+        secretsToken &&
+        secretsRepo
+    ) {
+        return { username: secretsUsername, token: secretsToken, repo: secretsRepo };
+    }
+
+    const username = await window.showInputBox({
+        prompt: `Enter your GitHub username.${useSavedCredentials ? " If desired, enable credential saving via `coderank.saveCredentials` for faster access." : ""}`,
+        placeHolder: "Username",
+        value: secretsUsername ?? "",
+        ignoreFocusOut: true,
+    });
+
+    const token = await window.showInputBox({
+        prompt: "Enter your GitHub PAT",
+        placeHolder: "Personal access token",
+        password: true,
+        value: secretsToken ?? "",
+        ignoreFocusOut: true,
+    });
+
+    const repo = await window.showInputBox({
+        prompt: "Enter your coderank repo name",
+        placeHolder: "Repository name",
+        value: secretsRepo ?? "",
+        ignoreFocusOut: true,
+    });
+
+    if (username && token && repo) {
+        return { username, token, repo };
+    }
+    return null;
+}
 
 export class Git {
     private constructor(
@@ -18,34 +81,19 @@ export class Git {
 
     private static async login(
         context: ExtensionContext,
-        saveCredentials: boolean
+        options: Partial<GitLoginOptions> = {}
     ): Promise<Git | null> {
-        const username = await window.showInputBox({
-            prompt: `Enter your GitHub username.${saveCredentials ? " If desired, enable credential saving via `coderank.saveCredentials` for faster access." : ""}`,
-            placeHolder: "Username",
-            value: (await context.secrets.get("githubUser")) ?? "",
-            ignoreFocusOut: true,
-        });
+        const opts: GitLoginOptions = { ...defaultOptions, ...options };
 
-        const token = await window.showInputBox({
-            prompt: "Enter your GitHub PAT",
-            placeHolder: "Personal access token",
-            password: true,
-            value: (await context.secrets.get("githubPAT")) ?? "",
-            ignoreFocusOut: true,
-        });
+        const credentials = await getGitCredentials(
+            context,
+            opts.saveCredentials,
+            opts.forceLoginPrompts
+        );
 
-        const repo = await window.showInputBox({
-            prompt: "Enter your coderank repo name",
-            placeHolder: "Repository name",
-            value: (await context.secrets.get("githubRepo")) ?? "",
-            ignoreFocusOut: true,
-        });
-
-        // Unknown branch name until repo is cloned
-        const branch = null;
-
-        if (username && token && repo) {
+        if (credentials !== null) {
+            const { username, token, repo } = credentials;
+            const branch = null;
             const coderankDir = context.globalStorageUri.fsPath;
             const repoDir = path.join(coderankDir, repo);
             return new Git(username, token, repo, branch, repoDir, coderankDir);
@@ -56,17 +104,40 @@ export class Git {
     /**
      * Login, clone the repository, await callback, push repository, and teardown
      * @param context
-     * @param saveCredentials
      * @param callback
+     * @param options
      */
     static async loginCloneContext(
         context: ExtensionContext,
-        saveCredentials: boolean,
-        callback: (repoDir: string) => void | Promise<void>
+        callback: (repoDir: string) => void | Promise<void>,
+        options: Partial<GitLoginOptions> = {}
     ): Promise<void> {
-        const git = await Git.login(context, saveCredentials);
+        const opts: GitLoginOptions = { ...defaultOptions, ...options };
+
+        let git = await Git.login(context, options);
         if (git !== null) {
-            git.cloneRepo();
+            while (true) {
+                try {
+                    git.cloneRepo();
+                    break;
+                } catch (err) {
+                    const errStr = err instanceof Error ? `: ${err.message}` : "";
+                    const result = await window.showInformationMessage(
+                        `Error cloning coderank git repository${errStr} \n\nWould you like to try again?`,
+                        { modal: false },
+                        "Yes",
+                        "No"
+                    );
+                    if (result !== "Yes") {
+                        return;
+                    }
+
+                    git = await Git.login(context, { ...opts, forceLoginPrompts: true });
+                    if (git === null) {
+                        return;
+                    }
+                }
+            }
 
             const callbackResult = callback(git.repoDir);
             if (callbackResult instanceof Promise) {
@@ -75,7 +146,7 @@ export class Git {
 
             git.pushRepo();
             await git.teardown();
-            if (saveCredentials) {
+            if (opts.saveCredentials) {
                 await git.saveCredentials(context);
             }
         }
