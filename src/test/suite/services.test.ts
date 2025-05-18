@@ -40,7 +40,7 @@ suite("Test services", () => {
                 mockInputs();
                 const saveCredentialsStub = sinon.stub(Git.prototype, "saveCredentials");
                 const callback = sinon.spy((repoDir: string) => {});
-                await Git.loginCloneContext(context, false, callback);
+                await Git.loginCloneContext(context, callback, { saveCredentials: false });
                 sinon.assert.calledOnce(callback);
                 sinon.assert.notCalled(saveCredentialsStub);
             });
@@ -51,14 +51,14 @@ suite("Test services", () => {
                 const callback = sinon.spy(async (repoDir: string) => {
                     await new Promise((resolve) => setTimeout(resolve, 5));
                 });
-                await Git.loginCloneContext(context, false, callback);
+                await Git.loginCloneContext(context, callback, { saveCredentials: false });
                 sinon.assert.calledOnce(callback);
                 sinon.assert.notCalled(saveCredentialsStub);
             });
 
             test("Save credentials", async () => {
                 mockInputs();
-                await Git.loginCloneContext(context, true, () => {});
+                await Git.loginCloneContext(context, () => {}, { saveCredentials: true });
                 assert.strictEqual(await context.secrets.get("githubUser"), username);
                 assert.strictEqual(await context.secrets.get("githubPAT"), pat);
                 assert.strictEqual(await context.secrets.get("githubRepo"), repo);
@@ -68,7 +68,7 @@ suite("Test services", () => {
                 const saveCredentialsStub = sinon.stub(Git.prototype, "saveCredentials");
                 mockInputs(null);
                 const callback = sinon.spy((repoDir: string) => {});
-                await Git.loginCloneContext(context, false, callback);
+                await Git.loginCloneContext(context, callback, { saveCredentials: false });
                 sinon.assert.notCalled(callback);
                 sinon.assert.notCalled(saveCredentialsStub);
             });
