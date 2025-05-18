@@ -4,13 +4,31 @@ export const LATEST_SCHEMA_VERSION = "0.4.0";
 export const LATEST_WEB_VIEWER_VERSION = "0.4.0";
 export const EDITOR_NAME = "VS Code";
 
-const VersionSchema = z.string().default(LATEST_SCHEMA_VERSION);
+//
+// AUTO PUSH
+//
+export const AutoPushRecordSchema = z.object({
+    year: z.string().default(""),
+    month: z.string().default(""),
+    week: z.string().default(""),
+    day: z.string().default(""),
+});
+export type AutoPushRecord = z.infer<typeof AutoPushRecordSchema>;
+
+//
+// WEB RECORD
+//
 const WebViewerVersionSchema = z.string().default(LATEST_WEB_VIEWER_VERSION);
 
 export const WebViewerRecordSchema = z.object({
     version: WebViewerVersionSchema,
 });
 export type WebViewerRecord = z.infer<typeof WebViewerRecordSchema>;
+
+//
+// CODERANK STATS
+//
+const VersionSchema = z.string().default(LATEST_SCHEMA_VERSION);
 
 export const CharMapValueSchema = z.object({
     added: z.number().default(0),
