@@ -4,7 +4,7 @@ import * as path from "path";
 import * as v from "vscode";
 
 import * as s from "../schemas";
-import { Git } from "../services";
+import { Git, GitLoginOptions } from "../services";
 import { CODERANK_FILENAME } from "../util";
 import { copyDirectory } from "../util";
 
@@ -38,19 +38,23 @@ export class RemoteStorage {
 
     static async cloneContext(
         context: v.ExtensionContext,
-        saveCredentials: boolean,
-        callback: (remote: RemoteStorage) => void | Promise<void>
+        callback: (remote: RemoteStorage) => void | Promise<void>,
+        options: Partial<GitLoginOptions> = {}
     ) {
-        await Git.loginCloneContext(context, saveCredentials, async (repoDir: string) => {
-            const coderankDir = path.join(repoDir, "coderank");
-            const coderankFilePath = path.join(coderankDir, CODERANK_FILENAME);
-            const remote = new RemoteStorage(repoDir, coderankDir, coderankFilePath);
-            await remote.update();
-            const callbackResult = callback(remote);
-            if (callbackResult instanceof Promise) {
-                await callbackResult;
-            }
-        });
+        await Git.loginCloneContext(
+            context,
+            async (repoDir: string) => {
+                const coderankDir = path.join(repoDir, "coderank");
+                const coderankFilePath = path.join(coderankDir, CODERANK_FILENAME);
+                const remote = new RemoteStorage(repoDir, coderankDir, coderankFilePath);
+                await remote.update();
+                const callbackResult = callback(remote);
+                if (callbackResult instanceof Promise) {
+                    await callbackResult;
+                }
+            },
+            options
+        );
     }
 
     private async update() {

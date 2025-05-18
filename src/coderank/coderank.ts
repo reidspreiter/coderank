@@ -4,7 +4,8 @@ import path from "path";
 import * as v from "vscode";
 
 import * as s from "../schemas";
-import { CODERANK_FILENAME } from "../util";
+import { Config, GitLoginOptions, setConfigValue } from "../services";
+import { CODERANK_FILENAME, AUTOPUSH_RECORD_FILENAME } from "../util";
 
 import { LocalStorage, Buffer, RemoteStorage } from ".";
 
@@ -12,6 +13,7 @@ export class Coderank {
     private constructor(
         private coderankDir: string,
         private coderankFilePath: string,
+        private autoPushRecordFilePath: string,
         private _buffer: Buffer,
         private _local: LocalStorage,
         private _localDisplay: s.CoderankProviderStats = s.CoderankProviderStatsSchema.parse({}),
@@ -26,9 +28,16 @@ export class Coderank {
     static async init(context: v.ExtensionContext): Promise<Coderank> {
         const coderankDir = context.globalStorageUri.fsPath;
         const coderankFilePath = path.join(coderankDir, CODERANK_FILENAME);
+        const autoPushRecordFilePath = path.join(coderankDir, AUTOPUSH_RECORD_FILENAME);
         const buffer = Buffer.init();
         const local = await LocalStorage.init(context);
-        const manager = new Coderank(coderankDir, coderankFilePath, buffer, local);
+        const manager = new Coderank(
+            coderankDir,
+            coderankFilePath,
+            autoPushRecordFilePath,
+            buffer,
+            local
+        );
         return manager;
     }
 
@@ -57,7 +66,10 @@ export class Coderank {
         this._buffer.clear();
     }
 
-    async flushLocalToRemote(context: v.ExtensionContext, saveCredentials: boolean): Promise<void> {
+    async flushLocalToRemote(
+        context: v.ExtensionContext,
+        options: Partial<GitLoginOptions> = {}
+    ): Promise<void> {
         await v.window.withProgress(
             {
                 location: v.ProgressLocation.Notification,
@@ -73,14 +85,25 @@ export class Coderank {
 
                 try {
                     reportProgress(25, `Cloning remote repository`);
-                    await RemoteStorage.cloneContext(context, saveCredentials, async (remote) => {
-                        reportProgress(50, "Adding local storage to remote");
-                        this._remoteDisplay = await remote.addLocalFile(
-                            await this._local.readCoderankFile()
-                        );
+                    await RemoteStorage.cloneContext(
+                        context,
+                        async (remote) => {
+                            reportProgress(50, "Adding local storage to remote");
+                            this._remoteDisplay = await remote.addLocalFile(
+                                await this._local.readCoderankFile()
+                            );
 
-                        reportProgress(70, `Pushing to remote repository`);
-                    });
+                            reportProgress(70, `Pushing to remote repository`);
+                        },
+                        options
+                    );
+
+                    await fs.writeFile(
+                        this.autoPushRecordFilePath,
+                        s.stringify(s.getCurrentAutoPushRecord()),
+                        "utf-8"
+                    );
+
                     reportProgress(90, `Removing local file`);
                     await this._local.clear();
                     this._localDisplay = s.CoderankProviderStatsSchema.parse({});
@@ -95,5 +118,56 @@ export class Coderank {
                 }
             }
         );
+    }
+
+    async autoPush(context: v.ExtensionContext, config: Config) {
+        if (config.pushReminderFrequency === "never") {
+            return;
+        }
+
+        const prevPushRecord = await s.readJSONFile(
+            this.autoPushRecordFilePath,
+            s.AutoPushRecordSchema
+        );
+
+        // Most likely the first time the user has activated the extension
+        // Write initial push record so they will be reminded the next time a push is overdue
+        if (prevPushRecord === null) {
+            await fs.writeFile(
+                this.autoPushRecordFilePath,
+                s.stringify(s.getCurrentAutoPushRecord()),
+                "utf-8"
+            );
+            return;
+        }
+
+        const currPushRecord = s.getCurrentAutoPushRecord();
+        const isDaily = config.pushReminderFrequency.startsWith("daily");
+        const isWeekly = config.pushReminderFrequency.startsWith("weekly");
+        const shouldAutoPush =
+            (isDaily && !s.shallowEqual(currPushRecord, prevPushRecord)) ||
+            (isWeekly &&
+                (currPushRecord.week !== prevPushRecord.week ||
+                    currPushRecord.year !== prevPushRecord.year));
+
+        if (shouldAutoPush) {
+            if (!config.pushReminderFrequency.endsWith("force")) {
+                const result = await v.window.showInformationMessage(
+                    `Your coderank data has not been pushed in more than one ${isDaily ? "day" : "week"}. Would you like to push now?`,
+                    { modal: false },
+                    "Yes",
+                    "No",
+                    "Don't show this again"
+                );
+                if (result !== "Yes") {
+                    if (result === "Don't show this again") {
+                        await setConfigValue("pushReminderFrequency", "never");
+                    }
+                    return;
+                }
+            }
+
+            await this.flushLocalToRemote(context, { saveCredentials: config.saveCredentials });
+        }
     }
 }

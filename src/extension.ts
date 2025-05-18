@@ -61,7 +61,7 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         commands.registerCommand("coderank.flushLocalToRemote", async () => {
-            coderank.flushLocalToRemote(context, config.saveCredentials);
+            coderank.flushLocalToRemote(context, { saveCredentials: config.saveCredentials });
             provider.setStats(coderank);
         })
     );
@@ -71,6 +71,8 @@ export async function activate(context: ExtensionContext) {
             updateWebViewer(context, config.saveCredentials);
         })
     );
+
+    await coderank.autoPush(context, config);
 }
 
-export function deactivate() { }
+export function deactivate() {}
