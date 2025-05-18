@@ -17,11 +17,15 @@ export async function updateWebViewer(
             };
             try {
                 reportProgress(0, `Cloning remote repository`);
-                await RemoteStorage.cloneContext(context, saveCredentials, async (remote) => {
-                    reportProgress(40, "Updating web viewer files");
-                    await remote.updateWebViewer({ showMessage: true, force: true });
-                    reportProgress(70, `Pushing to remote repository`);
-                });
+                await RemoteStorage.cloneContext(
+                    context,
+                    async (remote) => {
+                        reportProgress(40, "Updating web viewer files");
+                        await remote.updateWebViewer({ showMessage: true, force: true });
+                        reportProgress(70, `Pushing to remote repository`);
+                    },
+                    { saveCredentials }
+                );
                 v.window.showInformationMessage(
                     `Succesfully updated web viewer in remote repository`
                 );
