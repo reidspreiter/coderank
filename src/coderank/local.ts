@@ -32,7 +32,13 @@ export class LocalStorage {
 
     async addBuffer(buffer: Buffer): Promise<s.CoderankProviderStats> {
         let localFile = await this.readCoderankFile();
-        localFile = s.sumBufferToLocalFile(localFile, buffer.data, buffer.year, buffer.machine);
+        localFile = s.sumBufferToLocalFile(
+            localFile,
+            buffer.data,
+            buffer.week,
+            buffer.year,
+            buffer.machine
+        );
         await fs.writeFile(this.coderankFilePath, s.stringify(localFile), "utf-8");
         return s.CoderankProviderStatsSchema.parse(localFile);
     }
