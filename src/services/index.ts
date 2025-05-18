@@ -1,3 +1,3 @@
-export { Config, getConfig } from "./config";
-export { Git } from "./git";
-export { Logger } from "./logger";
+export * from "./config";
+export * from "./git";
+export * from "./logger";
