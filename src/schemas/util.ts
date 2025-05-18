@@ -2,6 +2,8 @@ import { promises as fs } from "fs";
 
 import * as z from "zod";
 
+import { getPreviousFiveWeeks } from "../util";
+
 import * as s from "./schemas";
 
 export function shallowEqual<T extends object>(objA: T, objB: T): boolean {
@@ -194,6 +196,7 @@ export function sumMachineMaps(base: s.MachineMap, addend: s.MachineMap): s.Mach
 export function sumBufferToLocalFile(
     localFile: s.CoderankFile,
     buffer: s.CoderankBuffer,
+    week: string,
     year: string,
     machine: string
 ): s.CoderankFile {
@@ -208,6 +211,28 @@ export function sumBufferToLocalFile(
     );
 
     localFile.years[year] = yearStats;
+
+    if (!(week in localFile.pastFiveWeeks)) {
+        const weeksCopy = localFile.pastFiveWeeks;
+        localFile.pastFiveWeeks = {};
+
+        getPreviousFiveWeeks(Number(week), Number(year)).forEach((week) => {
+            localFile.pastFiveWeeks[week] = weeksCopy[week] || s.CoderankStatsSchema.parse({});
+        });
+    }
+
+    const weekStats = localFile.pastFiveWeeks[week];
+    if (!weekStats.machines[machine]) {
+        weekStats.machines[machine] = s.MachineMapValueSchema.parse({});
+    }
+
+    weekStats.machines[machine].editors[s.EDITOR_NAME] = sumCoderankBuffers(
+        weekStats.machines[machine].editors[s.EDITOR_NAME] || s.EditorMapValueSchema.parse({}),
+        buffer
+    );
+
+    localFile.pastFiveWeeks[week] = weekStats;
+
     return localFile;
 }
 
@@ -228,6 +253,17 @@ export function sumLocalFileToRemoteFile(
             remoteFile.years[year] || s.CoderankStatsSchema.parse({}),
             localFile.years[year]
         );
+    }
+
+    const weeksCopy = remoteFile.pastFiveWeeks;
+    remoteFile.pastFiveWeeks = localFile.pastFiveWeeks;
+    for (const week in remoteFile.pastFiveWeeks) {
+        if (week in weeksCopy) {
+            remoteFile.pastFiveWeeks[week] = sumCoderankStats(
+                remoteFile.pastFiveWeeks[week],
+                weeksCopy[week]
+            );
+        }
     }
     return remoteFile;
 }
