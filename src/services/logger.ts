@@ -5,45 +5,40 @@ import { window, OutputChannel, TextDocumentChangeEvent } from "vscode";
 import { BufferParseStatus } from "../coderank";
 import { getTimestamp } from "../util";
 
+export type LogVerbosity = "" | "v" | "vv";
+
 export class Logger {
     private static logger: Logger;
     private outputChannel: OutputChannel;
-    private enabled: boolean = false;
+    private _verbosity: LogVerbosity;
     private label: string | null = null;
 
-    private constructor() {
+    private constructor(verbosity: LogVerbosity = "") {
         this.outputChannel = window.createOutputChannel("Coderank");
+        this._verbosity = verbosity;
         this.log("Coderank has been activated");
     }
 
-    static getLogger(debugEnabled?: boolean): Logger {
+    static getLogger(verbosity?: LogVerbosity): Logger {
         if (!Logger.logger) {
-            Logger.logger = new Logger();
+            Logger.logger = new Logger(verbosity);
         }
 
-        if (debugEnabled) {
-            Logger.logger.show();
+        if (verbosity !== undefined) {
+            Logger.logger.verbosity = verbosity;
         }
         return Logger.logger;
     }
 
-    /**
-     * Shows the debug console in the VSCode terminal and allows debug messages to be emitted
-     */
-    show(): void {
-        this.enabled = true;
-        this.outputChannel.show();
-    }
-
-    /**
-     * Prevents debug logs from being emitted
-     */
-    hide(): void {
-        this.enabled = false;
+    set verbosity(verbosity: LogVerbosity) {
+        this._verbosity = verbosity;
+        if (verbosity) {
+            this.outputChannel.show();
+        }
     }
 
     log(message: string, indent: number = 0) {
-        if (!this.enabled) {
+        if (!this._verbosity) {
             return;
         }
         if (this.label === null) {
@@ -54,19 +49,74 @@ export class Logger {
     }
 
     logTextDocumentChange(event: TextDocumentChangeEvent, status: BufferParseStatus): void {
-        if (!this.enabled) {
+        if (!this._verbosity) {
             return;
         }
 
         this.label = getTimestamp();
-        this.log("<<< Text Document Change Event >>>");
-
         const filename = path.basename(event.document.fileName);
+        const scheme = event.document.uri.scheme;
+
+        if (this._verbosity === "v") {
+            event.contentChanges.forEach((change, index) => {
+                const added = change.text.length;
+                const deleted = change.rangeLength;
+                if (added > 1 || deleted > 1) {
+                    let rejectedMessage = "";
+                    if (contentChanges.length === 0) {
+                        rejectedMessage = "REJECTED: no content changes";
+                    } else if (scheme !== "file") {
+                        (rejectedMessage = "REJECTED: scheme is not 'file'"), 2;
+                    } else if (filename === "COMMIT_EDITMSG") {
+                        (rejectedMessage = "REJECTED: editing 'COMMITEDIT_MSG"), 2;
+                    } else if (filename === "git-rebase-todo") {
+                        (rejectedMessage = "REJECTED: editing 'git-rebase-todo'"), 2;
+                    } else if (status === "conflict") {
+                        (rejectedMessage = "REJECTED: resolving merge conflict"), 2;
+                    } else if (status === "git") {
+                        const change = event.contentChanges[0];
+                        if (change.text.length === 0) {
+                            if (change.rangeLength !== 1) {
+                                rejectedMessage = "REJECTED: performing git operations";
+                            }
+                        } else {
+                            const { start, end } = change.range;
+                            if (
+                                end.line - start.line !== 0 ||
+                                end.character - start.character !== 0
+                            ) {
+                                rejectedMessage = "REJECTED: performing git operations";
+                            }
+                        }
+                    } else {
+                        const change = event.contentChanges[0];
+                        const conflictRegex = /<<<<<<< HEAD\n(.*?)=======\n(.*?)>>>>>>> .*?/s;
+                        if (change.text.match(conflictRegex)) {
+                            rejectedMessage = "REJECTED: resolving merge conflict";
+                        } else if (change.text.length) {
+                            const { start, end } = change.range;
+                            if (
+                                end.line - start.line !== 0 ||
+                                end.character - start.character !== 0
+                            ) {
+                                rejectedMessage =
+                                    "REJECTED: invalid paste with non-zero range difference";
+                            }
+                        }
+                    }
+                    this.log(
+                        `${filename}::${scheme} -> added ${added}, deleted ${deleted}${rejectedMessage !== "" ? ", " + rejectedMessage : ""}`
+                    );
+                }
+            });
+            return;
+        }
+
+        this.log("<<< Text Document Change Event >>>");
         this.log(`name: ${filename}`, 2);
         this.log(`path: ${event.document.fileName}`, 2);
         this.log("");
 
-        const scheme = event.document.uri.scheme;
         const contentChanges = event.contentChanges;
 
         this.log(`scheme: ${scheme}`, 2);
