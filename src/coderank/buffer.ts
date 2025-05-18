@@ -38,6 +38,10 @@ export class Buffer {
         return this._language;
     }
 
+    get week(): string {
+        return this._week;
+    }
+
     get year(): string {
         return this._year;
     }
