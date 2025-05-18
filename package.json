@@ -72,13 +72,23 @@
         },
         "coderank.logVerbosity": {
           "type": "string",
-          "enum": ["", "v", "vv"],
+          "enum": [
+            "",
+            "v",
+            "vv"
+          ],
           "default": "",
           "description": "Output log events to the console. '' disables logging. 'v' only logs large pastes and cuts. 'vv' logs all text document events. Default = \"\""
         },
         "coderank.pushReminderFrequency": {
           "type": "string",
-          "enum": ["daily", "daily-force", "weekly", "weekly-force", "never"],
+          "enum": [
+            "daily",
+            "daily-force",
+            "weekly",
+            "weekly-force",
+            "never"
+          ],
           "default": "weekly",
           "description": "How often coderank reminds you to push your data to remote on startup. Options: 'daily', 'daily-force', 'weekly', 'weekly-force', or 'never'. An option with '-force' will avoid the reminder and automatically prompt you to login. If `coderank.saveCredentials` is set, the push process will start automatically. Default = 'weekly'"
         }
@@ -145,6 +155,7 @@
   },
   "dependencies": {
     "simple-git": "3.26.0",
+    "uuid": "11.1.0",
     "zod": "3.23.8"
   }
 }
