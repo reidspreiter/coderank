@@ -386,7 +386,6 @@ const initializeLangChart = (coderankData) => {
         } else {
             const doWithEntry = (entry) => {
                 if (char in entry.chars) {
-                    console.log("found", char);
                     langMap.set(
                         entry.language,
                         (langMap.get(entry.language) ?? 0) + entry.chars[char]
@@ -399,7 +398,6 @@ const initializeLangChart = (coderankData) => {
                   ? parseWeekLangs(data, doWithEntry)
                   : data.languages.forEach((entry) => doWithEntry(entry));
         }
-        console.log(langMap);
         populateLangChart(langMap, value);
     };
 

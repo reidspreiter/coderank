@@ -207,8 +207,6 @@ export function sumBufferToLocalFile(
         buffer
     );
 
-    console.log(yearStats.machines[machine].editors[s.EDITOR_NAME]);
-
     localFile.years[year] = yearStats;
     return localFile;
 }
