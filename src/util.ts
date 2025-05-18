@@ -23,6 +23,36 @@ export function getWeek(): string {
     return String(weekNumber);
 }
 
+function getNumWeeksInYear(year: number): number {
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 28);
+    const days = Math.floor((endOfYear.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+    const maxWeeks = Math.ceil((days + 1) / 7);
+    return maxWeeks;
+}
+
+export function getPreviousFiveWeeks(currentWeek: number, currentYear: number): number[] {
+    const previousWeeks: number[] = [currentWeek];
+
+    if (currentWeek >= 5) {
+        for (let i = 1; i < 5; i++) {
+            previousWeeks.push(currentWeek - i);
+        }
+    } else {
+        const numWeeksInPrevYear = getNumWeeksInYear(currentYear - 1);
+
+        for (let i = 1; i <= 4; i++) {
+            let prevWeek = currentWeek - i;
+            if (prevWeek <= 0) {
+                prevWeek += numWeeksInPrevYear;
+            }
+            previousWeeks.push(prevWeek);
+        }
+    }
+
+    return previousWeeks;
+}
+
 export function getYear(): string {
     const now = new Date();
     return String(now.getFullYear());

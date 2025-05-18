@@ -112,6 +112,7 @@ suite("Test schemas", () => {
         });
 
         const year = "2025";
+        const week = "2";
         const machine = "work";
         const chars = createCharMap({ x: 8, "7": 2 });
         const languages = s.LangMapSchema.parse({
@@ -146,6 +147,31 @@ suite("Test schemas", () => {
                     },
                 }),
             },
+            pastFiveWeeks: {
+                "2": s.CoderankStatsSchema.parse({
+                    machines: {
+                        [machine]: {
+                            editors: {
+                                [s.EDITOR_NAME]: {
+                                    languages: { ...languages },
+                                },
+                            },
+                        },
+                    },
+                }),
+                "1": {
+                    machines: {},
+                },
+                "52": {
+                    machines: {},
+                },
+                "51": {
+                    machines: {},
+                },
+                "50": {
+                    machines: {},
+                },
+            },
         });
         suite("Test `sumBufferToLocalFile`", () => {
             const buffer = s.CoderankBufferSchema.parse({
@@ -156,6 +182,7 @@ suite("Test schemas", () => {
                 const actual = s.sumBufferToLocalFile(
                     s.CoderankFileSchema.parse({}),
                     buffer,
+                    week,
                     year,
                     machine
                 );
@@ -167,6 +194,7 @@ suite("Test schemas", () => {
                 const actual = s.sumBufferToLocalFile(
                     s.clone(localFile, s.CoderankFileSchema),
                     buffer,
+                    week,
                     year,
                     machine
                 );
