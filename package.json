@@ -70,10 +70,11 @@
           "default": true,
           "description": "Automatically add project data to local storage on document save. Default = true"
         },
-        "coderank.debug": {
-          "type": "boolean",
-          "default": false,
-          "description": "Logs events to the console for debug and development purposes. Default = false"
+        "coderank.logVerbosity": {
+          "type": "string",
+          "enum": ["", "v", "vv"],
+          "default": "",
+          "description": "Output log events to the console. '' disables logging. 'v' only logs large pastes and cuts. 'vv' logs all text document events. Default = \"\""
         },
         "coderank.pushReminderFrequency": {
           "type": "string",
