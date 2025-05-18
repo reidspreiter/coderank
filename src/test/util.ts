@@ -2,7 +2,10 @@ import * as path from "path";
 
 import * as v from "vscode";
 
+import { Config, DEFAULT_CONFIG } from "../services";
+
 import { AvailableFiles, WORKSPACE } from "./workspace";
+
 
 export function getTestContext(): v.ExtensionContext {
     return {
@@ -58,4 +61,11 @@ export async function deleteTextBeforeCursor(numChars: number) {
     await editor.edit((editBuilder) => {
         editBuilder.delete(range);
     });
+}
+
+export function createConfig(config: Partial<Config> = {}): Config {
+    return {
+        ...DEFAULT_CONFIG,
+        ...config,
+    };
 }
