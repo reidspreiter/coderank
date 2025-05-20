@@ -369,7 +369,7 @@ const initializeLangChart = (coderankData) => {
         const week = weekSelect.value;
         const value = valueSelect.value;
         const char = charSelect.value;
-        const data = coderankData.get(year);
+        let data = coderankData.get(year);
         if (year !== "all" && week !== "all") {
             data = data.weeks[week - 1];
         }
