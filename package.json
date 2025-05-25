@@ -46,12 +46,23 @@
       {
         "command": "coderank.initializeWebViewer",
         "title": "Initialize web viewer"
+      },
+      {
+        "command": "coderank.setMachineName",
+        "title": "Set machine name",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "coderank.reconfigureMachine",
+        "title": "Reconfigure machine",
+        "icon": "$(edit)"
       }
     ],
     "views": {
       "explorer": [
         {
           "id": "coderank",
+          "icon": "",
           "name": "Coderank"
         }
       ]
@@ -109,6 +120,18 @@
         {
           "command": "coderank.initializeWebViewer",
           "when": "view == coderank",
+          "group": "inline"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "coderank.setMachineName",
+          "when": "view == coderank && viewItem == machineName",
+          "group": "inline"
+        },
+        {
+          "command": "coderank.reconfigureMachine",
+          "when": "view == coderank && viewItem == machineID",
           "group": "inline"
         }
       ]
