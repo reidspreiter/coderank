@@ -95,9 +95,24 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
 
     setStats(coderank: Coderank): void {
         this.data = [
+            new StatItem({
+                label: coderank.machineDisplay.name,
+                iconPath: new ThemeIcon("keyboard"),
+                tooltip: "machine name",
+                contextValue: "machineName",
+                children: [
+                    new StatItem({
+                        label: coderank.machineDisplay.id,
+                        iconPath: new ThemeIcon("symbol-number"),
+                        tooltip: "machine id",
+                        contextValue: "machineID",
+                    }),
+                ],
+                expanded: false,
+            }),
             coderank.flushedToLocal
                 ? new StatItem({
-                      label: coderank.localDisplay.toString(),
+                      label: coderank.localDisplay.rank.toFixed(4),
                       iconPath: new ThemeIcon("device-desktop"),
                       tooltip: "local rank (1 rank = 10,000 individual user actions)",
                       children: this.buildChildren("local", coderank.localDisplay),
@@ -110,7 +125,7 @@ export class CoderankStatsProvider implements TreeDataProvider<StatItem> {
                   }),
             coderank.flushedToRemote
                 ? new StatItem({
-                      label: coderank.remoteDisplay.rank.toString(),
+                      label: coderank.remoteDisplay.rank.toFixed(4),
                       iconPath: new ThemeIcon("cloud"),
                       tooltip: "remote rank (1 rank = 10,000 individual user actions)",
                       children: this.buildChildren("remote", coderank.remoteDisplay),
