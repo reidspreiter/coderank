@@ -35,10 +35,8 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
-            if (config.autoStore) {
-                await coderank.pushBuffer();
-                provider.setStats(coderank);
-            }
+            await coderank.pushBuffer();
+            provider.setStats(coderank);
         })
     );
 
@@ -49,15 +47,15 @@ export async function activate(context: ExtensionContext) {
     );
 
     context.subscriptions.push(
-        commands.registerCommand("coderank.flushBuffer", async () => {
+        commands.registerCommand("coderank.pushBuffer", async () => {
             await coderank.pushBuffer({ showMessage: false });
             provider.setStats(coderank);
         })
     );
 
     context.subscriptions.push(
-        commands.registerCommand("coderank.flushLocalToRemote", async () => {
-            coderank.pushLocalToRemote(context, { saveCredentials: config.saveCredentials });
+        commands.registerCommand("coderank.pushLocalToRemote", async () => {
+            await coderank.pushLocalToRemote(context, { saveCredentials: config.saveCredentials });
             provider.setStats(coderank);
         })
     );
@@ -66,13 +64,14 @@ export async function activate(context: ExtensionContext) {
         commands.registerCommand("coderank.updateWebViewer", async () => {
             await coderank.pushLocalToRemote(
                 context,
-                { saveCredentials: config.saveCredentials },
+                { saveCredentials: config.saveCredentials, commitMessage: "update web viewer" },
                 undefined,
                 "Updating web viewer in remote repository",
                 undefined,
                 "Successfully updated web viewer in remote repository",
                 "Error updating web viewer in remote repository",
-                { force: true, showMessage: true }
+                { force: true, showMessage: true },
+                true
             );
         })
     );
