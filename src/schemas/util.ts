@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 
+import * as v from "vscode";
 import * as z from "zod";
 
 import { getPreviousFiveWeeks } from "../util";
@@ -58,7 +59,10 @@ export async function readJSONFile<T extends z.ZodTypeAny>(
         return schema.parse(json);
     } catch (err) {
         if (err instanceof SyntaxError) {
-            throw new Error(`JSON Parsing Error: filepath: '${filePath}': ${JSON.stringify(err)}`);
+            v.window.showWarningMessage(
+                `Warning: ${filePath} contains invalid JSON. Overwriting with empty object...`
+            );
+            return null;
         }
 
         if (err instanceof z.ZodError) {
@@ -295,11 +299,15 @@ export function updateMachineField<
     T extends s.MachineMapValue[K],
 >(file: s.CoderankFile, machineID: string, fieldName: K, newValue: T): s.CoderankFile {
     for (const year in file.years) {
-        file.years[year].machines[machineID][fieldName] = newValue;
+        if (machineID in file.years[year].machines) {
+            file.years[year].machines[machineID][fieldName] = newValue;
+        }
     }
 
     for (const week in file.pastFiveWeeks) {
-        file.pastFiveWeeks[week].machines[machineID][fieldName] = newValue;
+        if (machineID in file.pastFiveWeeks[week].machines) {
+            file.pastFiveWeeks[week].machines[machineID][fieldName] = newValue;
+        }
     }
     return file;
 }
