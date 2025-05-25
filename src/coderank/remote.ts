@@ -30,18 +30,24 @@ While it is not recommended, additional files may be added to this directory if 
     `;
 }
 
-async function copyWebViewerFiles(coderankDir: string, repoDir: string): Promise<void> {
-    const webPath = path.join(coderankDir, "out", "web", "src");
-    await fs.copyFile(path.join(webPath, "index.html"), path.join(repoDir, "index.html"));
-    await copyDirectory(path.join(webPath, "static"), path.join(repoDir, "static"));
+async function copyWebViewerFiles(webFilesDir: string, repoDir: string): Promise<boolean> {
+    try {
+        await fs.copyFile(path.join(webFilesDir, "index.html"), path.join(repoDir, "index.html"));
+        await copyDirectory(path.join(webFilesDir, "static"), path.join(repoDir, "static"));
+    } catch (err) {
+        v.window.showErrorMessage(`Error updating web viewer: ${err}`);
+        return true;
+    }
+    return false;
 }
 
 export class RemoteStorage {
     private constructor(
-        private directory: string,
-        private coderankDir: string,
+        private baseRepositoryDir: string,
+        private repoCoderankDir: string,
         private coderankFilePath: string,
         private webRecordPath: string,
+        private webFilesDir: string,
         private data?: s.CoderankFile
     ) {}
 
@@ -56,11 +62,18 @@ export class RemoteStorage {
                 const coderankDir = path.join(repoDir, "coderank");
                 const coderankFilePath = path.join(coderankDir, CODERANK_FILENAME);
                 const webRecordPath = path.join(coderankDir, WEB_RECORD_FILENAME);
+                const extensionWebFilesPath = path.join(
+                    context.extensionUri.fsPath,
+                    "out",
+                    "web",
+                    "src"
+                );
                 const remote = new RemoteStorage(
                     repoDir,
                     coderankDir,
                     coderankFilePath,
-                    webRecordPath
+                    webRecordPath,
+                    extensionWebFilesPath
                 );
                 await remote.initRemoteCoderankDirectory();
 
@@ -93,8 +106,8 @@ export class RemoteStorage {
     }
 
     private async initRemoteCoderankDirectory() {
-        await fs.mkdir(this.coderankDir, { recursive: true });
-        await fs.writeFile(path.join(this.coderankDir, "README.md"), getREADMEContent());
+        await fs.mkdir(this.repoCoderankDir, { recursive: true });
+        await fs.writeFile(path.join(this.repoCoderankDir, "README.md"), getREADMEContent());
     }
 
     async shouldUpdateWebRecord(webViewerOptions: {
@@ -111,34 +124,30 @@ export class RemoteStorage {
 
     async updateWebViewer(
         options: { showMessage: boolean; force: boolean } = { showMessage: false, force: false }
-    ) {
-        const webRecord = await s.readJSONFile(this.webRecordPath, s.WebViewerRecordSchema);
-        if (webRecord === null) {
-            await fs.writeFile(
-                this.webRecordPath,
-                JSON.stringify(s.WebViewerRecordSchema.parse({})),
-                "utf-8"
-            );
-            await copyWebViewerFiles(this.coderankDir, this.directory);
-            if (options.showMessage) {
-                v.window.showInformationMessage(
-                    `Updated web viewer to ${s.LATEST_WEB_VIEWER_VERSION}`
-                );
-            }
-        } else if (webRecord.version !== s.LATEST_WEB_VIEWER_VERSION) {
+    ): Promise<boolean> {
+        const webRecord =
+            (await s.readJSONFile(this.webRecordPath, s.WebViewerRecordSchema)) ||
+            s.WebViewerRecordSchema.parse({ version: "" });
+        if (webRecord.version !== s.LATEST_WEB_VIEWER_VERSION) {
             webRecord.version = s.LATEST_WEB_VIEWER_VERSION;
+            const aborted = await copyWebViewerFiles(this.webFilesDir, this.baseRepositoryDir);
+            if (aborted) {
+                return true;
+            }
             await fs.writeFile(this.webRecordPath, JSON.stringify(webRecord), "utf-8");
-            await copyWebViewerFiles(this.coderankDir, this.directory);
             if (options.showMessage) {
                 v.window.showInformationMessage(
                     `Updated web viewer to ${s.LATEST_WEB_VIEWER_VERSION}`
                 );
             }
         } else if (options.force) {
-            await copyWebViewerFiles(this.coderankDir, this.directory);
+            const aborted = await copyWebViewerFiles(this.webFilesDir, this.baseRepositoryDir);
+            if (aborted) {
+                return true;
+            }
             if (options.showMessage) {
                 v.window.showInformationMessage(
-                    `Web viewer was already up to date, but replaced web files anyways`
+                    "Web viewer was already up to date, but replaced web files anyways"
                 );
             }
         } else if (options.showMessage) {
@@ -146,6 +155,7 @@ export class RemoteStorage {
                 `Web viewer is already up to date: ${s.LATEST_WEB_VIEWER_VERSION}`
             );
         }
+        return false;
     }
 
     async addLocalFile(
@@ -165,11 +175,11 @@ export class RemoteStorage {
                     }
 
                     machineRegistry.id = newID;
-                    machineRegistry.inRemote = true;
-                    await setMachineRegistry(machineRegistry);
                     break;
                 }
             }
+            machineRegistry.inRemote = true;
+            await setMachineRegistry(machineRegistry);
         }
         remoteData = s.sumLocalFileToRemoteFile(remoteData, localData);
 
