@@ -133,7 +133,7 @@ export class Git {
 
         while (true) {
             try {
-                git.cloneRepo();
+                await git.cloneRepo();
                 break;
             } catch (err) {
                 const errStr = err instanceof Error ? `: ${err.message}` : "";
@@ -160,7 +160,7 @@ export class Git {
         }
 
         if (!abort) {
-            git.pushRepo(opts.commitMessage);
+            await git.pushRepo(opts.commitMessage);
         }
 
         await git.teardown();
@@ -175,7 +175,8 @@ export class Git {
         const cloneUrl = `https://${this.username}:${this.token}@github.com/${this.username}/${this.repo}.git`;
         const git = simpleGit(this.coderankDir);
         await git.clone(cloneUrl, this.repoDir);
-        const status = await git.status();
+        const clonedGit = simpleGit(this.repoDir);
+        const status = await clonedGit.status();
         this.branch = status.current;
     }
 
