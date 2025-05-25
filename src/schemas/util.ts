@@ -183,7 +183,7 @@ export function sumEditorMaps(base: s.EditorMap, addend: s.EditorMap): s.EditorM
 export function sumMachineMaps(base: s.MachineMap, addend: s.MachineMap): s.MachineMap {
     for (const key in addend) {
         if (!base[key]) {
-            base[key] = s.MachineMapValueSchema.parse({});
+            base[key] = s.MachineMapValueSchema.parse({ name: addend[key].name });
         }
         base[key].editors = sumEditorMaps(
             base[key].editors || s.EditorMapValueSchema.parse({}),
@@ -198,15 +198,17 @@ export function sumBufferToLocalFile(
     buffer: s.CoderankBuffer,
     week: string,
     year: string,
-    machine: string
+    machineRegistry: s.MachineRegistry
 ): s.CoderankFile {
     let yearStats = localFile.years[year] || s.CoderankStatsSchema.parse({});
-    if (!yearStats.machines[machine]) {
-        yearStats.machines[machine] = s.MachineMapValueSchema.parse({});
+    if (!yearStats.machines[machineRegistry.id]) {
+        yearStats.machines[machineRegistry.id] = s.MachineMapValueSchema.parse({});
     }
+    yearStats.machines[machineRegistry.id].name = machineRegistry.name;
 
-    yearStats.machines[machine].editors[s.EDITOR_NAME] = sumCoderankBuffers(
-        yearStats.machines[machine].editors[s.EDITOR_NAME] || s.EditorMapValueSchema.parse({}),
+    yearStats.machines[machineRegistry.id].editors[s.EDITOR_NAME] = sumCoderankBuffers(
+        yearStats.machines[machineRegistry.id].editors[s.EDITOR_NAME] ||
+            s.EditorMapValueSchema.parse({}),
         buffer
     );
 
@@ -222,12 +224,14 @@ export function sumBufferToLocalFile(
     }
 
     const weekStats = localFile.pastFiveWeeks[week];
-    if (!weekStats.machines[machine]) {
-        weekStats.machines[machine] = s.MachineMapValueSchema.parse({});
+    if (!weekStats.machines[machineRegistry.id]) {
+        weekStats.machines[machineRegistry.id] = s.MachineMapValueSchema.parse({});
     }
+    weekStats.machines[machineRegistry.id].name = machineRegistry.name;
 
-    weekStats.machines[machine].editors[s.EDITOR_NAME] = sumCoderankBuffers(
-        weekStats.machines[machine].editors[s.EDITOR_NAME] || s.EditorMapValueSchema.parse({}),
+    weekStats.machines[machineRegistry.id].editors[s.EDITOR_NAME] = sumCoderankBuffers(
+        weekStats.machines[machineRegistry.id].editors[s.EDITOR_NAME] ||
+            s.EditorMapValueSchema.parse({}),
         buffer
     );
 
@@ -266,4 +270,81 @@ export function sumLocalFileToRemoteFile(
         }
     }
     return remoteFile;
+}
+
+export function getProviderStatsFromFile(
+    file: s.CoderankFile,
+    machineID: string,
+    editor: string
+): s.CoderankProviderStats {
+    const provider = s.CoderankProviderStatsSchema.parse({});
+    for (const year in file.years) {
+        const languages = file.years[year].machines[machineID].editors[editor].languages;
+        for (const language in languages) {
+            const { added, deleted, rank } = languages[language];
+            provider.added += added;
+            provider.deleted += deleted;
+            provider.rank += rank;
+        }
+    }
+    return provider;
+}
+
+export function updateMachineField<
+    K extends Exclude<keyof s.MachineMapValue, "editors">,
+    T extends s.MachineMapValue[K],
+>(file: s.CoderankFile, machineID: string, fieldName: K, newValue: T): s.CoderankFile {
+    for (const year in file.years) {
+        file.years[year].machines[machineID][fieldName] = newValue;
+    }
+
+    for (const week in file.pastFiveWeeks) {
+        file.pastFiveWeeks[week].machines[machineID][fieldName] = newValue;
+    }
+    return file;
+}
+
+export function reconfigureMachineInStatsMap(
+    statsMap: s.CoderankStatsMap,
+    baseMachineID: string,
+    baseMachineName: string,
+    machineIDBeingCombined: string
+): s.CoderankStatsMap {
+    for (const key in statsMap) {
+        const machines = statsMap[key].machines;
+        if (machineIDBeingCombined in machines) {
+            if (!(baseMachineID in machines)) {
+                machines[baseMachineID] = s.MachineMapValueSchema.parse({ name: baseMachineName });
+            }
+            machines[baseMachineID].editors = sumEditorMaps(
+                machines[baseMachineID].editors,
+                machines[machineIDBeingCombined].editors
+            );
+            delete machines[machineIDBeingCombined];
+        }
+        statsMap[key].machines = machines;
+    }
+    return statsMap;
+}
+
+export function reconfigureMachine(
+    file: s.CoderankFile,
+    baseMachineID: string,
+    baseMachineName: string,
+    machineIDBeingCombined: string
+): s.CoderankFile {
+    file.years = reconfigureMachineInStatsMap(
+        file.years,
+        baseMachineID,
+        baseMachineName,
+        machineIDBeingCombined
+    );
+    file.pastFiveWeeks = reconfigureMachineInStatsMap(
+        file.pastFiveWeeks,
+        baseMachineID,
+        baseMachineName,
+        machineIDBeingCombined
+    );
+
+    return file;
 }

@@ -35,6 +35,32 @@ function doubleObject(obj: object): object {
     return obj;
 }
 
+function createFileFromMachineRegistry(
+    machineRegistries: s.MachineRegistry[],
+    year: string,
+    week: string
+): s.CoderankFile {
+    const file = s.CoderankFileSchema.parse({
+        years: {
+            [year]: s.CoderankStatsSchema.parse({
+                machines: {},
+            }),
+        },
+        pastFiveWeeks: {
+            [week]: s.CoderankStatsSchema.parse({
+                machines: {},
+            }),
+        },
+    });
+
+    for (const registry of machineRegistries) {
+        const machineData = s.MachineMapValueSchema.parse({ name: registry.name });
+        file.years[year].machines[registry.id] = machineData;
+        file.pastFiveWeeks[week].machines[registry.id] = machineData;
+    }
+    return file;
+}
+
 suite("Test schemas", () => {
     suite("Test `readJSONFile`", () => {
         const testSchema = z.object({ number: z.number() });
@@ -113,7 +139,10 @@ suite("Test schemas", () => {
 
         const year = "2025";
         const week = "2";
-        const machine = "work";
+        const machineRegistry = s.MachineRegistrySchema.parse({
+            name: "work",
+            id: "497dcba3-ecbf-4587-a2dd-5eb0665e6880",
+        });
         const chars = createCharMap({ x: 8, "7": 2 });
         const languages = s.LangMapSchema.parse({
             foober: {
@@ -137,7 +166,8 @@ suite("Test schemas", () => {
             years: {
                 [year]: s.CoderankStatsSchema.parse({
                     machines: {
-                        [machine]: {
+                        [machineRegistry.id]: {
+                            name: machineRegistry.name,
                             editors: {
                                 [s.EDITOR_NAME]: {
                                     languages: { ...languages },
@@ -150,7 +180,8 @@ suite("Test schemas", () => {
             pastFiveWeeks: {
                 "2": s.CoderankStatsSchema.parse({
                     machines: {
-                        [machine]: {
+                        [machineRegistry.id]: {
+                            name: machineRegistry.name,
                             editors: {
                                 [s.EDITOR_NAME]: {
                                     languages: { ...languages },
@@ -184,7 +215,7 @@ suite("Test schemas", () => {
                     buffer,
                     week,
                     year,
-                    machine
+                    machineRegistry
                 );
                 assert.deepStrictEqual(actual, expected);
             });
@@ -196,7 +227,7 @@ suite("Test schemas", () => {
                     buffer,
                     week,
                     year,
-                    machine
+                    machineRegistry
                 );
                 assert.deepStrictEqual(actual, expected);
             });
@@ -224,6 +255,41 @@ suite("Test schemas", () => {
                 );
                 assert.deepStrictEqual(actual, expected);
             });
+        });
+    });
+
+    suite("Test machine updates", () => {
+        const id = "497dcba3-ecbf-4587-a2dd-5eb0665e6880";
+        const machineRegistry = s.MachineRegistrySchema.parse({ name: "work", id });
+        const year = "2020";
+        const week = "2";
+
+        test("Test `updateMachineField`", () => {
+            const newMachineName = "home";
+            const newMachineRegistry = s.MachineRegistrySchema.parse({ name: newMachineName, id });
+            const expectedFile = createFileFromMachineRegistry([newMachineRegistry], year, week);
+            const actualFile = s.updateMachineField(
+                createFileFromMachineRegistry([machineRegistry], year, week),
+                id,
+                "name",
+                newMachineName
+            );
+            assert.deepStrictEqual(actualFile, expectedFile);
+        });
+
+        test("Test `reconfigureMachine`", () => {
+            const baseMachineRegistry = s.MachineRegistrySchema.parse({
+                name: "home",
+                id: "50e14f43-dd4e-412f-864d-78943ea28d91",
+            });
+            const expectedFile = createFileFromMachineRegistry([baseMachineRegistry], year, week);
+            const actualFile = s.reconfigureMachine(
+                createFileFromMachineRegistry([machineRegistry, baseMachineRegistry], year, week),
+                baseMachineRegistry.id,
+                baseMachineRegistry.name,
+                machineRegistry.id
+            );
+            assert.deepStrictEqual(actualFile, expectedFile);
         });
     });
 });

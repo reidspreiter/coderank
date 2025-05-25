@@ -6,9 +6,12 @@ import { window, ExtensionContext } from "vscode";
 
 import { getDate } from "../util";
 
+export type GitLoginCloneContextCallback = (repoDir: string) => boolean | Promise<boolean>;
+
 export type GitLoginOptions = {
     saveCredentials: boolean;
     forceLoginPrompts: boolean;
+    commitMessage?: string;
 };
 
 const defaultOptions: GitLoginOptions = {
@@ -48,6 +51,10 @@ async function getGitCredentials(
         ignoreFocusOut: true,
     });
 
+    if (!username) {
+        return null;
+    }
+
     const token = await window.showInputBox({
         prompt: "Enter your GitHub PAT",
         placeHolder: "Personal access token",
@@ -56,6 +63,10 @@ async function getGitCredentials(
         ignoreFocusOut: true,
     });
 
+    if (!token) {
+        return null;
+    }
+
     const repo = await window.showInputBox({
         prompt: "Enter your coderank repo name",
         placeHolder: "Repository name",
@@ -63,10 +74,11 @@ async function getGitCredentials(
         ignoreFocusOut: true,
     });
 
-    if (username && token && repo) {
-        return { username, token, repo };
+    if (!repo) {
+        return null;
     }
-    return null;
+
+    return { username, token, repo };
 }
 
 export class Git {
@@ -109,47 +121,53 @@ export class Git {
      */
     static async loginCloneContext(
         context: ExtensionContext,
-        callback: (repoDir: string) => void | Promise<void>,
+        callback: GitLoginCloneContextCallback,
         options: Partial<GitLoginOptions> = {}
-    ): Promise<void> {
+    ): Promise<boolean> {
         const opts: GitLoginOptions = { ...defaultOptions, ...options };
 
         let git = await Git.login(context, options);
-        if (git !== null) {
-            while (true) {
-                try {
-                    git.cloneRepo();
-                    break;
-                } catch (err) {
-                    const errStr = err instanceof Error ? `: ${err.message}` : "";
-                    const result = await window.showInformationMessage(
-                        `Error cloning coderank git repository${errStr} \n\nWould you like to try again?`,
-                        { modal: false },
-                        "Yes",
-                        "No"
-                    );
-                    if (result !== "Yes") {
-                        return;
-                    }
+        if (git === null) {
+            return true;
+        }
 
-                    git = await Git.login(context, { ...opts, forceLoginPrompts: true });
-                    if (git === null) {
-                        return;
-                    }
+        while (true) {
+            try {
+                git.cloneRepo();
+                break;
+            } catch (err) {
+                const errStr = err instanceof Error ? `: ${err.message}` : "";
+                const result = await window.showInformationMessage(
+                    `Error cloning coderank git repository${errStr} \n\nWould you like to try again?`,
+                    { modal: false },
+                    "Yes",
+                    "No"
+                );
+                if (result !== "Yes") {
+                    return true;
+                }
+
+                git = await Git.login(context, { ...opts, forceLoginPrompts: true });
+                if (git === null) {
+                    return true;
                 }
             }
-
-            const callbackResult = callback(git.repoDir);
-            if (callbackResult instanceof Promise) {
-                await callbackResult;
-            }
-
-            git.pushRepo();
-            await git.teardown();
-            if (opts.saveCredentials) {
-                await git.saveCredentials(context);
-            }
         }
+
+        let abort = callback(git.repoDir);
+        if (abort instanceof Promise) {
+            abort = await abort;
+        }
+
+        if (!abort) {
+            git.pushRepo(opts.commitMessage);
+        }
+
+        await git.teardown();
+        if (opts.saveCredentials) {
+            await git.saveCredentials(context);
+        }
+        return abort;
     }
 
     async cloneRepo(): Promise<void> {

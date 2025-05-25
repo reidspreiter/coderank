@@ -5,6 +5,16 @@ export const LATEST_WEB_VIEWER_VERSION = "0.4.0";
 export const EDITOR_NAME = "VS Code";
 
 //
+// MACHINE REGISTRY
+//
+export const MachineRegistrySchema = z.object({
+    inRemote: z.boolean().default(false),
+    name: z.string().default("unnamed"),
+    id: z.string().default(""),
+});
+export type MachineRegistry = z.infer<typeof MachineRegistrySchema>;
+
+//
 // AUTO PUSH
 //
 export const AutoPushRecordSchema = z.object({
@@ -69,6 +79,7 @@ export const EditorMapSchema = z.record(EditorMapValueSchema).default({});
 export type EditorMap = z.infer<typeof EditorMapSchema>;
 
 export const MachineMapValueSchema = z.object({
+    name: z.string().default("unnamed"),
     editors: EditorMapSchema,
 });
 export type MachineMapValue = z.infer<typeof MachineMapValueSchema>;

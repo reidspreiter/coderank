@@ -1,1 +1,0 @@
-export { updateWebViewer } from "./web";

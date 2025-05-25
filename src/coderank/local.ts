@@ -30,16 +30,19 @@ export class LocalStorage {
         await fs.rm(this.coderankFilePath);
     }
 
-    async addBuffer(buffer: Buffer): Promise<s.CoderankProviderStats> {
+    async addBuffer(
+        buffer: Buffer,
+        machineRegistry: s.MachineRegistry
+    ): Promise<s.CoderankProviderStats> {
         let localFile = await this.readCoderankFile();
         localFile = s.sumBufferToLocalFile(
             localFile,
             buffer.data,
             buffer.week,
             buffer.year,
-            buffer.machine
+            machineRegistry
         );
         await fs.writeFile(this.coderankFilePath, s.stringify(localFile), "utf-8");
-        return s.CoderankProviderStatsSchema.parse(localFile);
+        return s.getProviderStatsFromFile(localFile, machineRegistry.id, s.EDITOR_NAME);
     }
 }
