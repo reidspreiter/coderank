@@ -34,18 +34,18 @@
   "contributes": {
     "commands": [
       {
-        "command": "coderank.flushBuffer",
-        "title": "Flush buffer to local storage",
+        "command": "coderank.pushBuffer",
+        "title": "Push buffer to local storage",
         "icon": "$(desktop-download)"
       },
       {
-        "command": "coderank.flushLocalToRemote",
-        "title": "Flush local storage to remote repository",
+        "command": "coderank.pushLocalToRemote",
+        "title": "Push local storage to remote repository",
         "icon": "$(cloud-upload)"
       },
       {
-        "command": "coderank.initializeWebViewer",
-        "title": "Initialize web viewer"
+        "command": "coderank.updateWebViewer",
+        "title": "Update web viewer"
       },
       {
         "command": "coderank.setMachineName",
@@ -74,12 +74,7 @@
         "coderank.saveCredentials": {
           "type": "boolean",
           "default": false,
-          "description": "Save GitHub username and PAT. If this is set, pushing to remote will not prompt for login information unless an error occurs. Default = false"
-        },
-        "coderank.autoStore": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically add project data to local storage on document save. Default = true"
+          "markdownDescription": "Save GitHub username and PAT.\n\nIf this is set, pushing to remote will not prompt for login information unless an error occurs.\n\nDefault = `false`"
         },
         "coderank.logVerbosity": {
           "type": "string",
@@ -89,7 +84,7 @@
             "vv"
           ],
           "default": "",
-          "description": "Output log events to the console. '' disables logging. 'v' only logs large pastes and cuts. 'vv' logs all text document events. Default = \"\""
+          "markdownDescription": "Output log events to the console.\n\n`\"\"`: disables logging\n\n`\"v\"`: only logs large pastes and cuts\n\n`\"vv\"`: logs all text document events\n\nDefault = `\"\"`"
         },
         "coderank.pushReminderFrequency": {
           "type": "string",
@@ -101,24 +96,24 @@
             "never"
           ],
           "default": "weekly",
-          "description": "How often coderank reminds you to push your data to remote on startup. Options: 'daily', 'daily-force', 'weekly', 'weekly-force', or 'never'. An option with '-force' will avoid the reminder and automatically prompt you to login. If `coderank.saveCredentials` is set, the push process will start automatically. Default = 'weekly'"
+          "markdownDescription": "How often coderank reminds you to push your data to remote on startup.\n\nOptions: `\"daily\"`, `\"daily-force\"`, `\"weekly\"`, `\"weekly-force\"`, or `\"never\"`.\n\nAn option with `-force` will avoid the reminder and automatically prompt you to login.\n\nIf `coderank.saveCredentials` is set, the push process will start automatically.\n\nDefault = `\"weekly\"`"
         }
       }
     },
     "menus": {
       "view/title": [
         {
-          "command": "coderank.flushBuffer",
+          "command": "coderank.pushBuffer",
           "when": "view == coderank",
           "group": "navigation"
         },
         {
-          "command": "coderank.flushLocalToRemote",
+          "command": "coderank.pushLocalToRemote",
           "when": "view == coderank",
           "group": "navigation"
         },
         {
-          "command": "coderank.initializeWebViewer",
+          "command": "coderank.updateWebViewer",
           "when": "view == coderank",
           "group": "inline"
         }
