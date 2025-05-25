@@ -76,12 +76,11 @@ suite("Test schemas", () => {
             assert.strictEqual(result, null);
         });
 
-        test("Throw an error if file contains invalid json", async () => {
+        test("Return null if file contains invalid json", async () => {
             sinon.stub(fs, "readFile").resolves("not valid json");
 
-            await assert.rejects(async () => {
-                await s.readJSONFile("test.json", testSchema);
-            }, /JSON Parsing Error:/);
+            const result = await s.readJSONFile("test.json", testSchema);
+            assert.strictEqual(result, null);
         });
 
         test("Throw a validation error if schema does not match", async () => {
