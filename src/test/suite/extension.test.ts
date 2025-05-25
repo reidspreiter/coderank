@@ -38,7 +38,7 @@ suite("Test extension", () => {
                 ),
                 "utf-8"
             );
-            flushLocalToRemoteStub = sinon.stub(coderank, "flushLocalToRemote");
+            flushLocalToRemoteStub = sinon.stub(coderank, "pushLocalToRemote");
         });
 
         afterEach(async () => {
