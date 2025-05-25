@@ -17,13 +17,14 @@ export type MachineRegistry = z.infer<typeof MachineRegistrySchema>;
 //
 // AUTO PUSH
 //
-export const AutoPushRecordSchema = z.object({
+export const PushRecordSchema = z.object({
     year: z.string().default(""),
     month: z.string().default(""),
     week: z.string().default(""),
     day: z.string().default(""),
+    activePush: z.boolean().default(false),
 });
-export type AutoPushRecord = z.infer<typeof AutoPushRecordSchema>;
+export type PushRecord = z.infer<typeof PushRecordSchema>;
 
 //
 // WEB RECORD
