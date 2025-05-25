@@ -17,7 +17,6 @@ export class Buffer {
         private _week: string,
         private _year: string,
         private _language: string = "unknown",
-        private _machine: string = "unknown",
         private parseStatus: BufferParseStatus = "normal",
         private _data: s.CoderankBuffer = s.CoderankBufferSchema.parse({})
     ) {}
@@ -44,10 +43,6 @@ export class Buffer {
 
     get year(): string {
         return this._year;
-    }
-
-    get machine(): string {
-        return this._machine;
     }
 
     clear() {
