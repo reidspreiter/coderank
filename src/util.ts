@@ -5,6 +5,7 @@ export const RANK_SIZE = 10000;
 export const RANK_INCREMENT = 1 / RANK_SIZE;
 export const CODERANK_FILENAME = "coderank.json";
 export const AUTOPUSH_RECORD_FILENAME = "autoPushRecord.json";
+export const MACHINE_REGISTRY_FILENAME = "machineRegistry.json";
 
 export function getDate(): string {
     const now = new Date();
