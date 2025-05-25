@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import * as path from "path";
 
+import { v4 as uuidv4 } from "uuid";
 import * as v from "vscode";
 
 import * as s from "../schemas";
@@ -8,7 +9,13 @@ import { Git, GitLoginOptions } from "../services";
 import { CODERANK_FILENAME } from "../util";
 import { copyDirectory } from "../util";
 
+import { LocalStorage } from "./local";
+
 const WEB_RECORD_FILENAME = "web-viewer-record.json";
+
+export type RemoteFileCallback = (
+    remoteFile: s.CoderankFile
+) => s.CoderankFile | null | Promise<s.CoderankFile | null>;
 
 function getREADMEContent(): string {
     return `
@@ -33,44 +40,82 @@ export class RemoteStorage {
     private constructor(
         private directory: string,
         private coderankDir: string,
-        private coderankFilePath: string
+        private coderankFilePath: string,
+        private webRecordPath: string,
+        private data?: s.CoderankFile
     ) {}
 
     static async cloneContext(
         context: v.ExtensionContext,
-        callback: (remote: RemoteStorage) => void | Promise<void>,
+        callback: (remote: RemoteStorage) => boolean | Promise<boolean>,
         options: Partial<GitLoginOptions> = {}
-    ) {
-        await Git.loginCloneContext(
+    ): Promise<boolean> {
+        const abort = await Git.loginCloneContext(
             context,
-            async (repoDir: string) => {
+            async (repoDir) => {
                 const coderankDir = path.join(repoDir, "coderank");
                 const coderankFilePath = path.join(coderankDir, CODERANK_FILENAME);
-                const remote = new RemoteStorage(repoDir, coderankDir, coderankFilePath);
-                await remote.update();
-                const callbackResult = callback(remote);
-                if (callbackResult instanceof Promise) {
-                    await callbackResult;
+                const webRecordPath = path.join(coderankDir, WEB_RECORD_FILENAME);
+                const remote = new RemoteStorage(
+                    repoDir,
+                    coderankDir,
+                    coderankFilePath,
+                    webRecordPath
+                );
+                await remote.initRemoteCoderankDirectory();
+
+                let abort = callback(remote);
+                if (abort instanceof Promise) {
+                    abort = await abort;
                 }
+                if (!abort) {
+                    remote.write();
+                }
+                return abort;
             },
             options
         );
+        return abort;
     }
 
-    private async update() {
+    async read(): Promise<s.CoderankFile> {
+        if (this.data === undefined) {
+            this.data =
+                (await s.readJSONFile(this.coderankFilePath, s.CoderankFileSchema)) ||
+                s.CoderankFileSchema.parse({});
+        }
+        return this.data;
+    }
+
+    async write() {
+        const data = await this.read();
+        await fs.writeFile(this.coderankFilePath, s.stringify(data), "utf-8");
+    }
+
+    private async initRemoteCoderankDirectory() {
         await fs.mkdir(this.coderankDir, { recursive: true });
         await fs.writeFile(path.join(this.coderankDir, "README.md"), getREADMEContent());
+    }
+
+    async shouldUpdateWebRecord(webViewerOptions: {
+        showMessage: boolean;
+        force: boolean;
+    }): Promise<boolean> {
+        const webRecord = await s.readJSONFile(this.webRecordPath, s.WebViewerRecordSchema);
+        return (
+            webRecord === null ||
+            webRecord.version !== s.LATEST_WEB_VIEWER_VERSION ||
+            webViewerOptions.force
+        );
     }
 
     async updateWebViewer(
         options: { showMessage: boolean; force: boolean } = { showMessage: false, force: false }
     ) {
-        const webRecordPath = path.join(this.coderankDir, WEB_RECORD_FILENAME);
-        const webRecord = await s.readJSONFile(webRecordPath, s.WebViewerRecordSchema);
-
+        const webRecord = await s.readJSONFile(this.webRecordPath, s.WebViewerRecordSchema);
         if (webRecord === null) {
             await fs.writeFile(
-                webRecordPath,
+                this.webRecordPath,
                 JSON.stringify(s.WebViewerRecordSchema.parse({})),
                 "utf-8"
             );
@@ -82,7 +127,7 @@ export class RemoteStorage {
             }
         } else if (webRecord.version !== s.LATEST_WEB_VIEWER_VERSION) {
             webRecord.version = s.LATEST_WEB_VIEWER_VERSION;
-            await fs.writeFile(webRecordPath, JSON.stringify(webRecord), "utf-8");
+            await fs.writeFile(this.webRecordPath, JSON.stringify(webRecord), "utf-8");
             await copyWebViewerFiles(this.coderankDir, this.directory);
             if (options.showMessage) {
                 v.window.showInformationMessage(
@@ -103,15 +148,44 @@ export class RemoteStorage {
         }
     }
 
-    async readCoderankFile(): Promise<s.CoderankFile> {
-        let data = await s.readJSONFile(this.coderankFilePath, s.CoderankFileSchema);
-        return data || s.CoderankFileSchema.parse({});
+    async addLocalFile(
+        localStorage: LocalStorage,
+        machineRegistry: s.MachineRegistry,
+        setMachineRegistry: (registry: s.MachineRegistry) => Promise<void>
+    ): Promise<s.CoderankProviderStats> {
+        let remoteData = await this.read();
+        const localData = await localStorage.readCoderankFile();
+
+        if (!machineRegistry.inRemote) {
+            for (const year in remoteData.years) {
+                if (machineRegistry.id in remoteData.years[year].machines) {
+                    let newID = uuidv4();
+                    while (newID === machineRegistry.id) {
+                        newID = uuidv4();
+                    }
+
+                    machineRegistry.id = newID;
+                    machineRegistry.inRemote = true;
+                    await setMachineRegistry(machineRegistry);
+                    break;
+                }
+            }
+        }
+        remoteData = s.sumLocalFileToRemoteFile(remoteData, localData);
+
+        return s.getProviderStatsFromFile(remoteData, machineRegistry.id, s.EDITOR_NAME);
     }
 
-    async addLocalFile(localFile: s.CoderankFile): Promise<s.CoderankProviderStats> {
-        let remoteFile = await this.readCoderankFile();
-        remoteFile = s.sumLocalFileToRemoteFile(remoteFile, localFile);
-        await fs.writeFile(this.coderankFilePath, s.stringify(remoteFile), "utf-8");
-        return s.CoderankProviderStatsSchema.parse(remoteFile);
+    async updateData(callback: RemoteFileCallback): Promise<boolean> {
+        let callbackResult = callback(await this.read());
+        if (callbackResult instanceof Promise) {
+            callbackResult = await callbackResult;
+        }
+
+        if (callbackResult === null) {
+            return true;
+        }
+        this.data = callbackResult;
+        return false;
     }
 }
