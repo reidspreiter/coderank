@@ -6,7 +6,7 @@ import * as v from "vscode";
 
 import * as s from "../schemas";
 import { Config, GitLoginOptions, setConfigValue } from "../services";
-import { CODERANK_FILENAME, AUTOPUSH_RECORD_FILENAME, MACHINE_REGISTRY_FILENAME } from "../util";
+import { CODERANK_FILENAME, PUSH_RECORD_FILENAME, MACHINE_REGISTRY_FILENAME } from "../util";
 
 import { LocalStorage, Buffer, RemoteStorage, RemoteFileCallback } from ".";
 
@@ -27,7 +27,7 @@ class MachineItem implements v.QuickPickItem {
 export class Coderank {
     private constructor(
         private coderankFilePath: string,
-        private autoPushRecordFilePath: string,
+        private pushRecordFilePath: string,
         private machineRegistryFilePath: string,
         private _buffer: Buffer,
         private _local: LocalStorage,
@@ -44,14 +44,14 @@ export class Coderank {
     static async init(context: v.ExtensionContext): Promise<Coderank> {
         const coderankDir = context.globalStorageUri.fsPath;
         const coderankFilePath = path.join(coderankDir, CODERANK_FILENAME);
-        const autoPushRecordFilePath = path.join(coderankDir, AUTOPUSH_RECORD_FILENAME);
+        const pushRecordFilePath = path.join(coderankDir, PUSH_RECORD_FILENAME);
         const machineRegistryFilePath = path.join(coderankDir, MACHINE_REGISTRY_FILENAME);
 
         const buffer = Buffer.init();
         const local = await LocalStorage.init(context);
         const coderank = new Coderank(
             coderankFilePath,
-            autoPushRecordFilePath,
+            pushRecordFilePath,
             machineRegistryFilePath,
             buffer,
             local
@@ -101,6 +101,14 @@ export class Coderank {
         await fs.writeFile(this.machineRegistryFilePath, s.stringify(registry), "utf-8");
     }
 
+    async getPushRecord(): Promise<s.PushRecord | null> {
+        return await s.readJSONFile(this.pushRecordFilePath, s.PushRecordSchema);
+    }
+
+    async setPushRecord(record: s.PushRecord) {
+        await fs.writeFile(this.pushRecordFilePath, s.stringify(record), "utf-8");
+    }
+
     async pushBuffer(options: { showMessage: boolean } = { showMessage: false }): Promise<void> {
         try {
             this._localDisplay = await this._local.addBuffer(
@@ -134,6 +142,23 @@ export class Coderank {
     ): Promise<boolean> {
         let aborted = false;
         let newRemoteDisplay = s.CoderankProviderStatsSchema.parse({});
+        const pushRecord = (await this.getPushRecord()) || s.PushRecordSchema.parse({});
+
+        if (pushRecord.activePush) {
+            const result = await v.window.showWarningMessage(
+                "A Coderank push process may be running in another VS Code window or VS Code may have been closed while a push process was running.",
+                { modal: false },
+                "Push anyway",
+                "Cancel push"
+            );
+
+            if (result !== "Push anyway") {
+                return true;
+            }
+        }
+        pushRecord.activePush = true;
+        await this.setPushRecord(pushRecord);
+
         await v.window.withProgress(
             {
                 location: v.ProgressLocation.Notification,
@@ -188,12 +213,6 @@ export class Coderank {
                         return;
                     }
 
-                    await fs.writeFile(
-                        this.autoPushRecordFilePath,
-                        s.stringify(s.getCurrentAutoPushRecord()),
-                        "utf-8"
-                    );
-
                     reportProgress(90, "Removing local file");
                     await this._local.clear();
                     this._localDisplay = s.CoderankProviderStatsSchema.parse({});
@@ -207,6 +226,13 @@ export class Coderank {
                 }
             }
         );
+
+        if (aborted) {
+            pushRecord.activePush = false;
+            await this.setPushRecord(pushRecord);
+        } else {
+            await this.setPushRecord(s.getCurrentPushRecord());
+        }
         return aborted;
     }
 
@@ -215,23 +241,20 @@ export class Coderank {
             return;
         }
 
-        const prevPushRecord = await s.readJSONFile(
-            this.autoPushRecordFilePath,
-            s.AutoPushRecordSchema
-        );
+        const prevPushRecord = await this.getPushRecord();
 
         // Most likely the first time the user has activated the extension
         // Write initial push record so they will be reminded the next time a push is overdue
         if (prevPushRecord === null) {
-            await fs.writeFile(
-                this.autoPushRecordFilePath,
-                s.stringify(s.getCurrentAutoPushRecord()),
-                "utf-8"
-            );
+            await this.setPushRecord(s.getCurrentPushRecord());
             return;
         }
 
-        const currPushRecord = s.getCurrentAutoPushRecord();
+        if (prevPushRecord.activePush) {
+            return;
+        }
+
+        const currPushRecord = s.getCurrentPushRecord();
         const isDaily = config.pushReminderFrequency.startsWith("daily");
         const isWeekly = config.pushReminderFrequency.startsWith("weekly");
         const shouldAutoPush =
@@ -243,7 +266,7 @@ export class Coderank {
         if (shouldAutoPush) {
             if (!config.pushReminderFrequency.endsWith("force")) {
                 const result = await v.window.showInformationMessage(
-                    `Your coderank data has not been pushed in more than one ${isDaily ? "day" : "week"}. Would you like to push now?`,
+                    `Your coderank data has not been successfully pushed in more than one ${isDaily ? "day" : "week"}. Would you like to push now?`,
                     { modal: false },
                     "Yes",
                     "No",
