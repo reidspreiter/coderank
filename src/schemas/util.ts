@@ -28,14 +28,14 @@ export function shallowEqual<T extends object>(objA: T, objB: T): boolean {
     return true;
 }
 
-export function getCurrentAutoPushRecord(): s.AutoPushRecord {
+export function getCurrentPushRecord(): s.PushRecord {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
     const days = Math.floor((now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
     const weekNumber = Math.ceil((days + 1) / 7);
 
-    return s.AutoPushRecordSchema.parse({
+    return s.PushRecordSchema.parse({
         year: String(now.getFullYear()),
         month: String(now.getMonth() + 1),
         week: String(weekNumber),
