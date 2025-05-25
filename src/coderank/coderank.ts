@@ -20,7 +20,7 @@ class MachineItem implements v.QuickPickItem {
         public isCurrentMachine: boolean
     ) {
         this.label = id;
-        this.detail = name + isCurrentMachine ? " (CURRENT)" : "";
+        this.detail = name + (isCurrentMachine ? " (CURRENT)" : "");
     }
 }
 
@@ -49,14 +49,14 @@ export class Coderank {
 
         const buffer = Buffer.init();
         const local = await LocalStorage.init(context);
-        const manager = new Coderank(
+        const coderank = new Coderank(
             coderankFilePath,
             autoPushRecordFilePath,
             machineRegistryFilePath,
             buffer,
             local
         );
-        return manager;
+        return coderank;
     }
 
     get buffer(): Buffer {
@@ -90,13 +90,14 @@ export class Coderank {
         if (machineRegistry.id.length === 0) {
             machineRegistry.id = uuidv4();
             machineRegistry.inRemote = false;
-            await fs.writeFile(this.machineRegistryFilePath, s.stringify(machineRegistry), "utf-8");
+            await this.setMachineRegistry(machineRegistry);
         }
         this._machineDisplay = machineRegistry;
         return machineRegistry;
     }
 
     async setMachineRegistry(registry: s.MachineRegistry) {
+        this._machineDisplay = registry;
         await fs.writeFile(this.machineRegistryFilePath, s.stringify(registry), "utf-8");
     }
 
@@ -128,7 +129,8 @@ export class Coderank {
         webViewerOptions: { showMessage: boolean; force: boolean } = {
             showMessage: false,
             force: false,
-        }
+        },
+        treatWebViewerAsPrimaryAction: boolean = false
     ): Promise<boolean> {
         let aborted = false;
         let newRemoteDisplay = s.CoderankProviderStatsSchema.parse({});
@@ -154,12 +156,17 @@ export class Coderank {
                             newRemoteDisplay = await remote.addLocalFile(
                                 this._local,
                                 await this.getMachineRegistry(),
-                                this.setMachineRegistry
+                                (registry) => this.setMachineRegistry(registry)
                             );
 
                             if (await remote.shouldUpdateWebRecord(webViewerOptions)) {
                                 reportProgress(50, "Updating web viewer");
-                                remote.updateWebViewer(webViewerOptions);
+                                const webViewerAborted =
+                                    await remote.updateWebViewer(webViewerOptions);
+                                if (webViewerAborted && treatWebViewerAsPrimaryAction) {
+                                    aborted = true;
+                                    return true;
+                                }
                             }
 
                             if (primaryActionCallback !== undefined) {
@@ -187,7 +194,7 @@ export class Coderank {
                         "utf-8"
                     );
 
-                    reportProgress(90, `Removing local file`);
+                    reportProgress(90, "Removing local file");
                     await this._local.clear();
                     this._localDisplay = s.CoderankProviderStatsSchema.parse({});
                     this._remoteDisplay = newRemoteDisplay;
@@ -260,7 +267,7 @@ export class Coderank {
             context,
             {
                 saveCredentials: config.saveCredentials,
-                commitMessage: "changed machine name",
+                commitMessage: "change machine name",
             },
             async (remoteFile) => {
                 const { name: oldName, id } = await this.getMachineRegistry();
@@ -299,11 +306,15 @@ export class Coderank {
             context,
             {
                 saveCredentials: config.saveCredentials,
-                commitMessage: `reconfigured machine '${oldName}'`,
+                commitMessage: `reconfigure machine '${oldName}'`,
             },
             async (remoteFile) => {
                 const existingMachineItems: MachineItem[] = [
-                    new MachineItem("Abort", "Abort this operation", false),
+                    new MachineItem(
+                        "Abort",
+                        `WARNING: reconfiguring ${oldName} (CURRENT) causes its data to be combined with the selected machine.\nThis is irreversible and you may wish to abort this operation.\nThis is useful if you uninstalled and reinstalled VS Code on the same machine, causing Coderank to initialize a new machine reference even though one already exists in the remote repository.`,
+                        false
+                    ),
                 ];
 
                 for (const year in remoteFile.years) {
@@ -319,7 +330,7 @@ export class Coderank {
                 }
 
                 const newMachineItem = await v.window.showQuickPick(existingMachineItems, {
-                    placeHolder: `WARNING: ${oldName} (CURRENT) will be combined and replaced with the selected machine. This is irreversible.`,
+                    placeHolder: `Choose an available machine to reconfigure to...`,
                     title: "Select New Machine",
                     ignoreFocusOut: true,
                 });
