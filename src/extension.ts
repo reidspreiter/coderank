@@ -3,12 +3,12 @@ import { ExtensionContext, window, workspace, commands } from "vscode";
 import { Coderank } from "./coderank";
 import { CoderankStatsProvider } from "./provider";
 import { getConfig, Logger } from "./services";
-import { updateWebViewer } from "./web";
 
 export async function activate(context: ExtensionContext) {
     let config = getConfig();
-    const LOG = Logger.getLogger(config.debug);
+    const LOG = Logger.getLogger(config.logVerbosity);
     const coderank = await Coderank.init(context);
+    await coderank.getMachineRegistry();
 
     const provider = new CoderankStatsProvider(coderank);
     window.registerTreeDataProvider("coderank", provider);
@@ -16,15 +16,11 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration("coderank")) {
-                const debug = config.debug;
+                const logVerbosity = config.logVerbosity;
                 config = getConfig();
 
-                if (debug !== config.debug) {
-                    if (config.debug) {
-                        LOG.show();
-                    } else {
-                        LOG.hide();
-                    }
+                if (logVerbosity !== config.logVerbosity) {
+                    LOG.verbosity = logVerbosity;
                 }
                 provider.setStats(coderank);
             }
@@ -40,7 +36,7 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         workspace.onDidSaveTextDocument(async () => {
             if (config.autoStore) {
-                await coderank.flushBuffer();
+                await coderank.pushBuffer();
                 provider.setStats(coderank);
             }
         })
@@ -54,21 +50,44 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         commands.registerCommand("coderank.flushBuffer", async () => {
-            await coderank.flushBuffer({ showMessage: false });
+            await coderank.pushBuffer({ showMessage: false });
             provider.setStats(coderank);
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.flushLocalToRemote", async () => {
-            coderank.flushLocalToRemote(context, { saveCredentials: config.saveCredentials });
+            coderank.pushLocalToRemote(context, { saveCredentials: config.saveCredentials });
             provider.setStats(coderank);
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.updateWebViewer", async () => {
-            updateWebViewer(context, config.saveCredentials);
+            await coderank.pushLocalToRemote(
+                context,
+                { saveCredentials: config.saveCredentials },
+                undefined,
+                "Updating web viewer in remote repository",
+                undefined,
+                "Successfully updated web viewer in remote repository",
+                "Error updating web viewer in remote repository",
+                { force: true, showMessage: true }
+            );
+        })
+    );
+
+    context.subscriptions.push(
+        commands.registerCommand("coderank.setMachineName", async () => {
+            await coderank.setMachineName(context, config);
+            provider.setStats(coderank);
+        })
+    );
+
+    context.subscriptions.push(
+        commands.registerCommand("coderank.reconfigureMachine", async () => {
+            await coderank.reconfigureMachine(context, config);
+            provider.setStats(coderank);
         })
     );
 
