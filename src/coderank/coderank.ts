@@ -280,7 +280,15 @@ export class Coderank {
                 }
             }
 
-            await this.pushLocalToRemote(context, { saveCredentials: config.saveCredentials });
+            await this.pushLocalToRemote(
+                context,
+                { saveCredentials: config.saveCredentials },
+                undefined,
+                `Completing auto push for frequency ${config.pushReminderFrequency}`,
+                "Completing auto push",
+                `Succesfully completed auto push for frequency ${config.pushReminderFrequency}`,
+                `Error completing auto push for frequency ${config.pushReminderFrequency}`,
+            );
         }
     }
 
