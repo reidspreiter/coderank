@@ -87,7 +87,7 @@ export async function readJSONFile<T extends z.ZodTypeAny>(
  * @returns `JSON.stringify` but with `BigInt` support
  */
 export function stringify(obj: object): string {
-    return JSON.stringify(obj, (_, v) => (typeof v === "bigint" ? v.toString() : v));
+    return JSON.stringify(obj, (_, v) => (typeof v === "bigint" ? v.toString() : v), 2);
 }
 
 /**

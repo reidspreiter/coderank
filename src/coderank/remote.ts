@@ -134,7 +134,7 @@ export class RemoteStorage {
             if (aborted) {
                 return true;
             }
-            await fs.writeFile(this.webRecordPath, JSON.stringify(webRecord), "utf-8");
+            await fs.writeFile(this.webRecordPath, s.stringify(webRecord), "utf-8");
             if (options.showMessage) {
                 v.window.showInformationMessage(
                     `Updated web viewer to ${s.LATEST_WEB_VIEWER_VERSION}`

@@ -84,7 +84,7 @@ suite("Test schemas", () => {
         });
 
         test("Throw a validation error if schema does not match", async () => {
-            sinon.stub(fs, "readFile").resolves(JSON.stringify({ number: "8" }));
+            sinon.stub(fs, "readFile").resolves(s.stringify({ number: "8" }));
 
             await assert.rejects(async () => {
                 await s.readJSONFile("test.json", testSchema);
@@ -93,7 +93,7 @@ suite("Test schemas", () => {
 
         test("Return data if validation succeeds", async () => {
             const expected = { number: 8 };
-            sinon.stub(fs, "readFile").resolves(JSON.stringify(expected));
+            sinon.stub(fs, "readFile").resolves(s.stringify(expected));
 
             const actual = await s.readJSONFile("test.json", testSchema);
             assert.deepStrictEqual(actual, expected);
