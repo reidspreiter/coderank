@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 
+import * as v from "vscode";
 import * as z from "zod";
 
 import { getPreviousFiveWeeks } from "../util";
@@ -27,14 +28,14 @@ export function shallowEqual<T extends object>(objA: T, objB: T): boolean {
     return true;
 }
 
-export function getCurrentAutoPushRecord(): s.AutoPushRecord {
+export function getCurrentPushRecord(): s.PushRecord {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
     const days = Math.floor((now.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
     const weekNumber = Math.ceil((days + 1) / 7);
 
-    return s.AutoPushRecordSchema.parse({
+    return s.PushRecordSchema.parse({
         year: String(now.getFullYear()),
         month: String(now.getMonth() + 1),
         week: String(weekNumber),
@@ -58,7 +59,10 @@ export async function readJSONFile<T extends z.ZodTypeAny>(
         return schema.parse(json);
     } catch (err) {
         if (err instanceof SyntaxError) {
-            throw new Error(`JSON Parsing Error: filepath: '${filePath}': ${JSON.stringify(err)}`);
+            v.window.showWarningMessage(
+                `Warning: ${filePath} contains invalid JSON. Overwriting with empty object...`
+            );
+            return null;
         }
 
         if (err instanceof z.ZodError) {
@@ -83,7 +87,7 @@ export async function readJSONFile<T extends z.ZodTypeAny>(
  * @returns `JSON.stringify` but with `BigInt` support
  */
 export function stringify(obj: object): string {
-    return JSON.stringify(obj, (_, v) => (typeof v === "bigint" ? v.toString() : v));
+    return JSON.stringify(obj, (_, v) => (typeof v === "bigint" ? v.toString() : v), 2);
 }
 
 /**
@@ -295,11 +299,15 @@ export function updateMachineField<
     T extends s.MachineMapValue[K],
 >(file: s.CoderankFile, machineID: string, fieldName: K, newValue: T): s.CoderankFile {
     for (const year in file.years) {
-        file.years[year].machines[machineID][fieldName] = newValue;
+        if (machineID in file.years[year].machines) {
+            file.years[year].machines[machineID][fieldName] = newValue;
+        }
     }
 
     for (const week in file.pastFiveWeeks) {
-        file.pastFiveWeeks[week].machines[machineID][fieldName] = newValue;
+        if (machineID in file.pastFiveWeeks[week].machines) {
+            file.pastFiveWeeks[week].machines[machineID][fieldName] = newValue;
+        }
     }
     return file;
 }

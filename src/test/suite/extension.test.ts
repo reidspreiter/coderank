@@ -6,7 +6,7 @@ import sinon from "sinon";
 
 import { Coderank } from "../../coderank/coderank.js";
 import * as s from "../../schemas";
-import { AUTOPUSH_RECORD_FILENAME } from "../../util.js";
+import { PUSH_RECORD_FILENAME } from "../../util.js";
 import { getTestContext, createConfig } from "../util.js";
 
 suite("Test extension", () => {
@@ -21,7 +21,7 @@ suite("Test extension", () => {
         // readJSONFile is non-configurable / non-writeable to sinon so do this horrible workaround
         const autoPushRecordFilePath = path.join(
             context.globalStorageUri.fsPath,
-            AUTOPUSH_RECORD_FILENAME
+            PUSH_RECORD_FILENAME
         );
         let flushLocalToRemoteStub: sinon.SinonStub;
 
@@ -29,7 +29,7 @@ suite("Test extension", () => {
             await fs.writeFile(
                 autoPushRecordFilePath,
                 s.stringify(
-                    s.AutoPushRecordSchema.parse({
+                    s.PushRecordSchema.parse({
                         year: "2025",
                         month: "02",
                         week: "7",
@@ -65,7 +65,7 @@ suite("Test extension", () => {
         test("Does not push when not due", async () => {
             await fs.writeFile(
                 autoPushRecordFilePath,
-                s.stringify(s.getCurrentAutoPushRecord()),
+                s.stringify(s.getCurrentPushRecord()),
                 "utf-8"
             );
             await coderank.autoPush(context, createConfig());

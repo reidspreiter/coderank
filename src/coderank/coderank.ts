@@ -6,7 +6,7 @@ import * as v from "vscode";
 
 import * as s from "../schemas";
 import { Config, GitLoginOptions, setConfigValue } from "../services";
-import { CODERANK_FILENAME, AUTOPUSH_RECORD_FILENAME, MACHINE_REGISTRY_FILENAME } from "../util";
+import { CODERANK_FILENAME, PUSH_RECORD_FILENAME, MACHINE_REGISTRY_FILENAME } from "../util";
 
 import { LocalStorage, Buffer, RemoteStorage, RemoteFileCallback } from ".";
 
@@ -20,14 +20,14 @@ class MachineItem implements v.QuickPickItem {
         public isCurrentMachine: boolean
     ) {
         this.label = id;
-        this.detail = name + isCurrentMachine ? " (CURRENT)" : "";
+        this.detail = name + (isCurrentMachine ? " (CURRENT)" : "");
     }
 }
 
 export class Coderank {
     private constructor(
         private coderankFilePath: string,
-        private autoPushRecordFilePath: string,
+        private pushRecordFilePath: string,
         private machineRegistryFilePath: string,
         private _buffer: Buffer,
         private _local: LocalStorage,
@@ -44,19 +44,19 @@ export class Coderank {
     static async init(context: v.ExtensionContext): Promise<Coderank> {
         const coderankDir = context.globalStorageUri.fsPath;
         const coderankFilePath = path.join(coderankDir, CODERANK_FILENAME);
-        const autoPushRecordFilePath = path.join(coderankDir, AUTOPUSH_RECORD_FILENAME);
+        const pushRecordFilePath = path.join(coderankDir, PUSH_RECORD_FILENAME);
         const machineRegistryFilePath = path.join(coderankDir, MACHINE_REGISTRY_FILENAME);
 
         const buffer = Buffer.init();
         const local = await LocalStorage.init(context);
-        const manager = new Coderank(
+        const coderank = new Coderank(
             coderankFilePath,
-            autoPushRecordFilePath,
+            pushRecordFilePath,
             machineRegistryFilePath,
             buffer,
             local
         );
-        return manager;
+        return coderank;
     }
 
     get buffer(): Buffer {
@@ -90,14 +90,23 @@ export class Coderank {
         if (machineRegistry.id.length === 0) {
             machineRegistry.id = uuidv4();
             machineRegistry.inRemote = false;
-            await fs.writeFile(this.machineRegistryFilePath, s.stringify(machineRegistry), "utf-8");
+            await this.setMachineRegistry(machineRegistry);
         }
         this._machineDisplay = machineRegistry;
         return machineRegistry;
     }
 
     async setMachineRegistry(registry: s.MachineRegistry) {
+        this._machineDisplay = registry;
         await fs.writeFile(this.machineRegistryFilePath, s.stringify(registry), "utf-8");
+    }
+
+    async getPushRecord(): Promise<s.PushRecord | null> {
+        return await s.readJSONFile(this.pushRecordFilePath, s.PushRecordSchema);
+    }
+
+    async setPushRecord(record: s.PushRecord) {
+        await fs.writeFile(this.pushRecordFilePath, s.stringify(record), "utf-8");
     }
 
     async pushBuffer(options: { showMessage: boolean } = { showMessage: false }): Promise<void> {
@@ -128,10 +137,28 @@ export class Coderank {
         webViewerOptions: { showMessage: boolean; force: boolean } = {
             showMessage: false,
             force: false,
-        }
+        },
+        treatWebViewerAsPrimaryAction: boolean = false
     ): Promise<boolean> {
         let aborted = false;
         let newRemoteDisplay = s.CoderankProviderStatsSchema.parse({});
+        const pushRecord = (await this.getPushRecord()) || s.PushRecordSchema.parse({});
+
+        if (pushRecord.activePush) {
+            const result = await v.window.showWarningMessage(
+                "A Coderank push process may be running in another VS Code window or VS Code may have been closed while a push process was running.",
+                { modal: false },
+                "Push anyway",
+                "Cancel push"
+            );
+
+            if (result !== "Push anyway") {
+                return true;
+            }
+        }
+        pushRecord.activePush = true;
+        await this.setPushRecord(pushRecord);
+
         await v.window.withProgress(
             {
                 location: v.ProgressLocation.Notification,
@@ -154,12 +181,17 @@ export class Coderank {
                             newRemoteDisplay = await remote.addLocalFile(
                                 this._local,
                                 await this.getMachineRegistry(),
-                                this.setMachineRegistry
+                                (registry) => this.setMachineRegistry(registry)
                             );
 
                             if (await remote.shouldUpdateWebRecord(webViewerOptions)) {
                                 reportProgress(50, "Updating web viewer");
-                                remote.updateWebViewer(webViewerOptions);
+                                const webViewerAborted =
+                                    await remote.updateWebViewer(webViewerOptions);
+                                if (webViewerAborted && treatWebViewerAsPrimaryAction) {
+                                    aborted = true;
+                                    return true;
+                                }
                             }
 
                             if (primaryActionCallback !== undefined) {
@@ -181,13 +213,7 @@ export class Coderank {
                         return;
                     }
 
-                    await fs.writeFile(
-                        this.autoPushRecordFilePath,
-                        s.stringify(s.getCurrentAutoPushRecord()),
-                        "utf-8"
-                    );
-
-                    reportProgress(90, `Removing local file`);
+                    reportProgress(90, "Removing local file");
                     await this._local.clear();
                     this._localDisplay = s.CoderankProviderStatsSchema.parse({});
                     this._remoteDisplay = newRemoteDisplay;
@@ -200,6 +226,13 @@ export class Coderank {
                 }
             }
         );
+
+        if (aborted) {
+            pushRecord.activePush = false;
+            await this.setPushRecord(pushRecord);
+        } else {
+            await this.setPushRecord(s.getCurrentPushRecord());
+        }
         return aborted;
     }
 
@@ -208,23 +241,20 @@ export class Coderank {
             return;
         }
 
-        const prevPushRecord = await s.readJSONFile(
-            this.autoPushRecordFilePath,
-            s.AutoPushRecordSchema
-        );
+        const prevPushRecord = await this.getPushRecord();
 
         // Most likely the first time the user has activated the extension
         // Write initial push record so they will be reminded the next time a push is overdue
         if (prevPushRecord === null) {
-            await fs.writeFile(
-                this.autoPushRecordFilePath,
-                s.stringify(s.getCurrentAutoPushRecord()),
-                "utf-8"
-            );
+            await this.setPushRecord(s.getCurrentPushRecord());
             return;
         }
 
-        const currPushRecord = s.getCurrentAutoPushRecord();
+        if (prevPushRecord.activePush) {
+            return;
+        }
+
+        const currPushRecord = s.getCurrentPushRecord();
         const isDaily = config.pushReminderFrequency.startsWith("daily");
         const isWeekly = config.pushReminderFrequency.startsWith("weekly");
         const shouldAutoPush =
@@ -236,7 +266,7 @@ export class Coderank {
         if (shouldAutoPush) {
             if (!config.pushReminderFrequency.endsWith("force")) {
                 const result = await v.window.showInformationMessage(
-                    `Your coderank data has not been pushed in more than one ${isDaily ? "day" : "week"}. Would you like to push now?`,
+                    `Your coderank data has not been successfully pushed in more than one ${isDaily ? "day" : "week"}. Would you like to push now?`,
                     { modal: false },
                     "Yes",
                     "No",
@@ -250,7 +280,15 @@ export class Coderank {
                 }
             }
 
-            await this.pushLocalToRemote(context, { saveCredentials: config.saveCredentials });
+            await this.pushLocalToRemote(
+                context,
+                { saveCredentials: config.saveCredentials },
+                undefined,
+                `Completing auto push for frequency ${config.pushReminderFrequency}`,
+                "Completing auto push",
+                `Succesfully completed auto push for frequency ${config.pushReminderFrequency}`,
+                `Error completing auto push for frequency ${config.pushReminderFrequency}`,
+            );
         }
     }
 
@@ -260,7 +298,7 @@ export class Coderank {
             context,
             {
                 saveCredentials: config.saveCredentials,
-                commitMessage: "changed machine name",
+                commitMessage: "change machine name",
             },
             async (remoteFile) => {
                 const { name: oldName, id } = await this.getMachineRegistry();
@@ -299,11 +337,15 @@ export class Coderank {
             context,
             {
                 saveCredentials: config.saveCredentials,
-                commitMessage: `reconfigured machine '${oldName}'`,
+                commitMessage: `reconfigure machine '${oldName}'`,
             },
             async (remoteFile) => {
                 const existingMachineItems: MachineItem[] = [
-                    new MachineItem("Abort", "Abort this operation", false),
+                    new MachineItem(
+                        "Abort",
+                        `WARNING: reconfiguring ${oldName} (CURRENT) causes its data to be combined with the selected machine.\nThis is irreversible and you may wish to abort this operation.\nThis is useful if you uninstalled and reinstalled VS Code on the same machine, causing Coderank to initialize a new machine reference even though one already exists in the remote repository.`,
+                        false
+                    ),
                 ];
 
                 for (const year in remoteFile.years) {
@@ -319,7 +361,7 @@ export class Coderank {
                 }
 
                 const newMachineItem = await v.window.showQuickPick(existingMachineItems, {
-                    placeHolder: `WARNING: ${oldName} (CURRENT) will be combined and replaced with the selected machine. This is irreversible.`,
+                    placeHolder: `Choose an available machine to reconfigure to...`,
                     title: "Select New Machine",
                     ignoreFocusOut: true,
                 });

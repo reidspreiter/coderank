@@ -6,14 +6,12 @@ type PromptToPushFrequency = "daily" | "daily-force" | "weekly" | "weekly-force"
 
 export type Config = {
     saveCredentials: boolean;
-    autoStore: boolean;
     pushReminderFrequency: PromptToPushFrequency;
     logVerbosity: LogVerbosity;
 };
 
 export const DEFAULT_CONFIG: Config = {
     saveCredentials: false,
-    autoStore: true,
     pushReminderFrequency: "weekly",
     logVerbosity: "",
 };
@@ -22,7 +20,6 @@ export function getConfig(): Config {
     const config = workspace.getConfiguration("coderank");
     return {
         saveCredentials: config.get<boolean>("saveCredentials", DEFAULT_CONFIG.saveCredentials),
-        autoStore: config.get<boolean>("autoStore", DEFAULT_CONFIG.autoStore),
         pushReminderFrequency: config.get<PromptToPushFrequency>(
             "pushReminderFrequency",
             DEFAULT_CONFIG.pushReminderFrequency
