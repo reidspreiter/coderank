@@ -31,6 +31,10 @@ export class Logger {
     }
 
     set verbosity(verbosity: LogVerbosity) {
+        if (verbosity === this._verbosity) {
+            return;
+        }
+        
         this._verbosity = verbosity;
         if (verbosity) {
             this.outputChannel.show();

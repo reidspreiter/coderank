@@ -16,12 +16,8 @@ export async function activate(context: ExtensionContext) {
     context.subscriptions.push(
         workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration("coderank")) {
-                const logVerbosity = config.logVerbosity;
                 config = getConfig();
-
-                if (logVerbosity !== config.logVerbosity) {
-                    LOG.verbosity = logVerbosity;
-                }
+                LOG.verbosity = config.logVerbosity;
                 provider.setStats(coderank);
             }
         })
