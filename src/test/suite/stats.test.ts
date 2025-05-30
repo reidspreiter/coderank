@@ -19,7 +19,7 @@ function textContentEvent(range: v.Range, rangeLength: number, text: string = ""
 function textEvent(scheme: string, fileName: string, contentChanges: v.TextDocumentContentChangeEvent[] = []): v.TextDocumentChangeEvent {
     return {
         document: {
-            uri: v.Uri.parse(scheme),
+            uri: v.Uri.from({scheme}),
             fileName,
             isUntitled: false,
             languageId: "unknown",
@@ -136,48 +136,94 @@ suite("Test stats", () => {
             });
 
             suite("Git", () => {
-                beforeEach(async () => {
-                    coderank = await Coderank.init(context);
-                });
+                const zEvent = textEvent("file", "extension.ts", [
+                    textContentEvent(new v.Range(20, 44, 20, 44), 0, "z"),
+                ]);
 
-                test("Commit", () => {
-                    const events = [
-                        textEvent("vscode-scm", "extension.ts", [
-                            textContentEvent(new v.Range(0, 0, 0, 0), 0),
-                        ]),
-                        textEvent("vscode-scm", "input", [
-                            textContentEvent(new v.Range(0, 0, 0, 0), 0),
-                        ]),
-                        textEvent("git", "extension.ts.git", [
-                            textContentEvent(new v.Range(18, 0, 24, 0), 255, "random giberish"),
-                        ]),
-                        textEvent("file", "COMMIT_EDITMSG", [
-                            textContentEvent(new v.Range(0, 0, 0, 0), 0, "j"),
-                        ]),
-                        textEvent("file", "COMMIT_EDITMSG", [
-                        ]),
-                        textEvent("file", "extension.ts", [
-                        ]),
-                        textEvent("file", "extension.ts", [
-                            textContentEvent(new v.Range(20, 44, 20, 44), 0, "z"),
-                        ]),
-                    ];
+                const params = [
+                    {
+                        eventSequenceName: "Commit",
+                        events: [
+                            textEvent("vscode-scm", "extension.ts", [
+                                textContentEvent(new v.Range(0, 0, 0, 0), 0),
+                            ]),
+                            textEvent("vscode-scm", "input", [
+                                textContentEvent(new v.Range(0, 0, 0, 0), 0),
+                            ]),
+                            textEvent("git", "extension.ts.git", [
+                                textContentEvent(new v.Range(18, 0, 24, 0), 255, "random giberish"),
+                            ]),
+                            textEvent("file", "COMMIT_EDITMSG", [
+                                textContentEvent(new v.Range(0, 0, 0, 0), 0, "j"),
+                            ]),
+                            textEvent("file", "COMMIT_EDITMSG"),
+                            textEvent("file", "extension.ts"),
+                        ],
+                    },
+                    {
+                        eventSequenceName: "Rebase with merge conflict",
+                        events: [
+                            textEvent("git-rebase-todo", "file", [
+                                textContentEvent(new v.Range(1, 0, 1, 35), 35),
+                            ]),
+                            textEvent("git-rebase-todo", "file"),
+                            textEvent("git-rebase-todo", "file", [
+                                textContentEvent(new v.Range(0, 0, 34, 0), 1578, "pick d3549d462be573e66225febb6b350812062aa25a"),
+                            ]),
+                            textEvent("stats.test.ts", "file", [
+                                textContentEvent(new v.Range(0, 0, 185, 0), 6887, "file contents"),
+                            ]),
+                            textEvent("stats.test.ts", "file", [
+                                textContentEvent(new v.Range(9, 0, 181, 0), 6719, "<<<<<<< HEADfile contents during merge conflict=======more contents>>>>>>> 897511c (test commit to reorder)"),
+                            ]),
+                            textEvent("stats.test.ts", "git", [
+                                textContentEvent(new v.Range(9, 0, 181, 0), 6547, "file contents"),
+                            ]),
+                            textEvent("stats.test.ts", "file"),
+                            textEvent("stats.test.ts", "file", [
+                                textContentEvent(new v.Range(0, 0, 118, 0), 4884, "file contents"),
+                            ]),
+                            textEvent("stats.test.ts", "file", [
+                                textContentEvent(new v.Range(35, 0, 114, 0), 3617, "contents moved for rebase"),
+                            ]),
+                            textEvent("stats.test.ts", "file"),
+                            textEvent("input", "vscode-scm", [
+                                textContentEvent(new v.Range(0, 0, 0, 0), 0, "commit message"),
+                            ]),
+                            textEvent("input", "vscode-scm", [
+                                textContentEvent(new v.Range(0, 0, 0, 22), 22),
+                            ]),
+                            textEvent("input", "vscode-scm", [
+                                textContentEvent(new v.Range(0, 0, 0, 0), 0),
+                            ]),
+                            textEvent("stats.test.ts", "file", [
+                                textContentEvent(new v.Range(9, 0, 68, 0), 2480, "file contents"),
+                            ]),
+                        ],
+                    },
+                ];
 
-                    for (const event of events) {
-                        coderank.buffer.parseTextDocumentChangeEvent(event);
-                    }
+                for (const param of params) {
+                    test(param.eventSequenceName, async () => {
+                        coderank = await Coderank.init(context);
 
-                    let addedTotal = 0;
-                    let zTotal = 0;
+                        for (const event of param.events) {
+                            coderank.buffer.parseTextDocumentChangeEvent(event);
+                        }
+                        coderank.buffer.parseTextDocumentChangeEvent(zEvent);
 
-                    for (const language in coderank.buffer.data.languages) {
-                        addedTotal += coderank.buffer.data.languages[language].added;
-                        zTotal += coderank.buffer.data.languages[language].chars["z"].added;
-                    }
+                        let addedTotal = 0;
+                        let zTotal = 0;
 
-                    assert.equal(addedTotal, 1);
-                    assert.equal(zTotal, 1);
-                });
+                        for (const language in coderank.buffer.data.languages) {
+                            addedTotal += coderank.buffer.data.languages[language].added;
+                            zTotal += coderank.buffer.data.languages[language].chars["z"].added;
+                        }
+
+                        assert.equal(addedTotal, 1);
+                        assert.equal(zTotal, 1);
+                    });
+                }
             });
         });
     });
