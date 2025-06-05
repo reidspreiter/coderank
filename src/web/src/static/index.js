@@ -1,4 +1,6 @@
-const SUPPORTED_VERSIONS = ["0.2.0"];
+const SUPPORTED_VERSIONS = ["0.4.0"];
+
+const SUPPORTED_EDITORS = ["VS Code"];
 
 Chart.defaults.color = "#F5F5F5";
 Chart.defaults.font.family = "monospace";
@@ -22,9 +24,10 @@ chartColors = [
 document.addEventListener("DOMContentLoaded", async () => {
     try {
         const coderankData = await loadCoderankData();
+        console.log(coderankData);
         initializeStatsTable(coderankData);
-        initializeLangChart(coderankData);
-        initializeCharChart(coderankData);
+        //initializeLangChart(coderankData);
+        // initializeCharChart(coderankData);
         removeLoader();
     } catch (err) {
         showAlertModal(
@@ -33,6 +36,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         throw err;
     }
 });
+
+const getMostRecentWeek = (weeks) => {
+    let mostRecent = weeks[0];
+
+    for (let i = 1; i < weeks.length; i++) {
+        const a = mostRecent;
+        const b = weeks[i];
+        if (b === "0") {
+            mostRecent = 0;
+        } else {
+            mostRecent = Number(b) > Number(a) ? b : a;
+        }
+    }
+    return mostRecent;
+};
+
+const getLatestYears = (years, maxCount = 5) => {
+    return years
+        .map((str) => ({ str, num: Number(str) }))
+        .sort((a, b) => b.num - a.num)
+        .slice(0, Math.min(maxCount, years.length))
+        .map((item) => item.str);
+};
 
 const getISOWeek = (week, year) => {
     const day = 1 + (week - 1) * 7;
@@ -56,60 +82,191 @@ const fmtChar = (char) => {
     const map = {
         "\n": "\\n",
         "\t": "\\t",
+        " ": " ",
     };
-    return `'${map[char] || char}'`;
+    return map[char] ? `'${map[char]}'` : char;
 };
 
-const fmtNumber = (numOrStr) => {
-    if (typeof numOrStr === "string") {
-        numOrStr = Number(numOrStr);
-    }
-    return numOrStr.toLocaleString(undefined, { maximumFractionDigits: 3 });
+const fmtNum = (numOrStr, fractionDigits = 2) => {
+    return Number(numOrStr).toLocaleString(undefined, {
+        maximumFractionDigits: fractionDigits,
+        minimumFractionDigits: fractionDigits,
+    });
 };
 
-const fmtKeyVal = (arrOrObj, { char = false } = {}) => {
-    if (!Array.isArray(arrOrObj)) {
-        arrOrObj = Object.values(arrOrObj);
-    }
-    let [key, val] = arrOrObj;
-    key = char ? fmtChar(key) : key;
-    return `${key} : ${fmtNumber(val)}`;
+const copy = (data) => {
+    return JSON.parse(JSON.stringify(data));
 };
 
-//
-// Returns a map containing yearly and total coderank data
-//
+// const fmtKeyVal = (arrOrObj, { char = false } = {}) => {
+//     if (!Array.isArray(arrOrObj)) {
+//         arrOrObj = Object.values(arrOrObj);
+//     }
+//     let [key, val] = arrOrObj;
+//     key = char ? fmtChar(key) : key;
+//     return `${key} : ${fmtNumber(val)}`;
+// };
+
 const loadCoderankData = async () => {
-    const data = new Map();
-
-    const addContentsToMap = async (key, filename) => {
-        try {
-            const response = await fetch(`./coderank/${filename}`);
-            if (!response.ok) {
-                throw new Error(
-                    `Something went wrong: ${response.status} - ${response.statusText}`
-                );
-            }
-            const json = await response.json();
-            if (!SUPPORTED_VERSIONS.includes(json.version)) {
-                showAlertModal(
-                    `Unsupported schema version '${json.version}' detected for '${filename}' file. Expected ${SUPPORTED_VERSIONS}.\n\nThis may cause issues.\n\nPlease update your Coderank web viewer. If you have already updated your web viewer, please submit a bug report below:`
-                );
-            }
-            data.set(key, json);
-        } catch (err) {
-            showAlertModal(`Error fetching '${filename}':\n\n${err.stack}`);
+    const coderankFilename = "coderank.json";
+    try {
+        const response = await fetch(`./coderank/${coderankFilename}`);
+        if (!response.ok) {
+            throw new Error(`Something went wrong: ${response.status} - ${response.statusText}`);
         }
+        const json = await response.json();
+        if (!SUPPORTED_VERSIONS.includes(json.version)) {
+            showAlertModal(
+                `Unsupported schema version '${json.version}' detected for '${coderankFilename}' file. Expected ${SUPPORTED_VERSIONS}.\n\nThis may cause issues.\n\nPlease update your Coderank web viewer. If you have already updated your web viewer, please submit a bug report below:`
+            );
+        }
+        return json;
+    } catch (err) {
+        showAlertModal(`Error fetching '${coderankFilename}':\n\n${err.stack}`);
+    }
+};
+
+//
+// Schema helpers
+//
+const sumCharMaps = (base, addend) => {
+    for (const char in addend) {
+        const stats = addend[char];
+        const entry = base[char] || {
+            added: 0,
+            added_typed: 0,
+            added_pasted: 0,
+        };
+        entry.added += stats.added;
+        entry.added_typed += stats.added_typed;
+        entry.added_pasted += stats.added_pasted;
+        base[char] = entry;
+    }
+    return base;
+};
+
+const sumMainStats = (base, addend) => {
+    base.rank += addend.rank;
+    base.added += addend.added;
+    base.added_pasted += addend.added_pasted;
+    base.added_typed += addend.added_typed;
+    base.num_pastes += addend.num_pastes;
+    base.deleted += addend.deleted;
+    base.deleted_typed += addend.deleted_typed;
+    base.deleted_cut += addend.deleted_cut;
+    base.num_cuts += addend.num_cuts;
+    base.chars = sumCharMaps(base.chars, addend.chars);
+    return base;
+};
+
+const sumLangMaps = (base, addend) => {
+    for (const lang in addend) {
+        base[lang] = sumMainStats(
+            base[lang] || {
+                rank: 0,
+                added: 0,
+                added_typed: 0,
+                added_pasted: 0,
+                num_pastes: 0,
+                deleted: 0,
+                deleted_typed: 0,
+                deleted_cut: 0,
+                num_cuts: 0,
+                chars: {},
+            },
+            addend[lang]
+        );
+    }
+    return base;
+};
+
+const sumCoderankBuffers = (base, addend) => {
+    base.languages = sumLangMaps(base.languages, addend.languages);
+    return base;
+};
+
+const sumEditorMaps = (base, addend) => {
+    for (const key in addend) {
+        base[key] = sumCoderankBuffers(
+            base[key] || {
+                languages: {},
+            },
+            addend[key]
+        );
+    }
+    return base;
+};
+
+const sumMachineMaps = (base, addend) => {
+    for (const key in addend) {
+        if (!base[key]) {
+            base[key] = {
+                name: addend[key].name,
+                editors: {},
+            };
+        }
+        base[key].editors = sumEditorMaps(
+            base[key].editors || {
+                languages: {},
+            },
+            addend[key].editors
+        );
+    }
+    return base;
+};
+
+const sumCoderankStats = (base, addend) => {
+    base.machines = sumMachineMaps(base.machines, addend.machines);
+    return base;
+};
+
+const sumDurationData = (data, keys = undefined) => {
+    const dataCopy = copy(data);
+    const desiredKeys = keys ?? Object.keys(dataCopy);
+    let base = dataCopy[desiredKeys[0]];
+    for (let i = 1; i < desiredKeys.length; i++) {
+        base = sumCoderankStats(base, dataCopy[desiredKeys[i]]);
+    }
+    return base;
+};
+
+const sumTotalMainStatsAndTypingActionsForLanguagesEditorsMachines = (data) => {
+    let base = {
+        rank: 0,
+        added: 0,
+        added_typed: 0,
+        added_pasted: 0,
+        num_pastes: 0,
+        deleted: 0,
+        deleted_typed: 0,
+        deleted_cut: 0,
+        num_cuts: 0,
+        chars: {},
     };
+    const machineMap = new Map();
+    const editorMap = new Map();
+    const languageMap = new Map();
 
-    await addContentsToMap("all", "totalcoderank.json");
+    for (const machine in data.machines) {
+        const machineData = data.machines[machine];
+        for (const editor in machineData.editors) {
+            const editorData = machineData.editors[editor];
+            for (const language in editorData.languages) {
+                base = sumMainStats(base, copy(editorData.languages[language]));
 
-    await Promise.all(
-        data.get("all").years.map(async (year) => {
-            await addContentsToMap(year, `coderank${year}.json`);
-        })
-    );
-    return data;
+                const rank = editorData.languages[language].rank;
+                languageMap[language] = (languageMap[language] ?? 0) + rank;
+                editorMap[editor] = (editorMap[editor] ?? 0) + rank;
+
+                if (!machineMap[machine]) {
+                    machineMap[machine] = { name: machineData.name, rank };
+                } else {
+                    machineMap[machine].rank += rank;
+                }
+            }
+        }
+    }
+    return [base, languageMap, editorMap, machineMap];
 };
 
 //
@@ -152,23 +309,58 @@ const sumChars = (base, addend) => {
     return base;
 };
 
-const buildKeyValTable = (id, map) => {
+const buildAddDeleteNetTable = (id, map) => {
     const table = document.getElementById(id);
     table.innerHTML = "";
 
-    map.forEach((value, key) => {
+    const headers = ["", "added", "deleted", "total", "net"];
+    const headerRow = document.createElement("tr");
+    for (const value of headers) {
+        const cell = document.createElement("th");
+        cell.textContent = value;
+        headerRow.appendChild(cell);
+    }
+    table.appendChild(headerRow);
+
+    for (const [key, values] of map) {
         const row = document.createElement("tr");
 
         const keyCell = document.createElement("td");
         keyCell.textContent = key;
+        keyCell.style.whiteSpace = "pre-line";
+        row.appendChild(keyCell);
+
+        for (const value of values) {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            cell.style.whiteSpace = "pre-line";
+            cell.classList.add("right");
+            row.appendChild(cell);
+        }
+        table.appendChild(row);
+    }
+};
+
+const buildKeyValTable = (id, map) => {
+    const table = document.getElementById(id);
+    table.innerHTML = "";
+
+    for (const [key, value] of map) {
+        const row = document.createElement("tr");
+
+        const keyCell = document.createElement("td");
+        keyCell.textContent = key;
+        keyCell.style.whiteSpace = "pre-line";
+        keyCell.style.width = "30%";
         row.appendChild(keyCell);
 
         const valueCell = document.createElement("td");
         valueCell.textContent = value;
+        valueCell.style.whiteSpace = "pre-line";
         row.appendChild(valueCell);
 
         table.appendChild(row);
-    });
+    }
 };
 
 //
@@ -188,12 +380,25 @@ const buildSelect = (id, options, { optionText = null, onChange = null } = {}) =
         listeners.set(id, onChange);
     }
 
-    options.forEach((opt, i) => {
-        const option = document.createElement("option");
-        option.value = opt;
-        option.text = optionText ? optionText[i] : opt;
-        select.appendChild(option);
-    });
+    for (let i = 0; i < options.length; i++) {
+        const optionElem = document.createElement("option");
+        optionElem.value = options[i];
+        optionElem.text = optionText ? optionText[i] : optionElem.value;
+        select.appendChild(optionElem);
+    }
+};
+
+const getDurationKeyVals = (weeks, years) => {
+    const latestYear = Math.max(...years);
+    const keys = ["1 week", "5 weeks", "1 year"];
+    if (years.length >= 5) {
+        keys.push("5 years");
+    }
+    keys.push(...["all time", ...years]);
+    const vals = [...keys];
+    keys.push(...weeks);
+    vals.push(...weeks.map((week) => getISOWeek(week, latestYear)));
+    return [keys, vals];
 };
 
 const buildWeekSelect = (coderankData, year, id, onChange) => {
@@ -216,104 +421,139 @@ const selectVal = (id, option) => {
 };
 
 const populateStatsTable = (data) => {
-    const actualRank = data.rank + data.rankBuffer / 10000;
-    const rows = new Map([
+    console.log(data);
+    const [total, languageMap, editorMap, machineMap] =
+        sumTotalMainStatsAndTypingActionsForLanguagesEditorsMachines(data);
+    const baseStatsRows = new Map([
         [
             "rank",
-            `${fmtNumber(actualRank)} : ${fmtNumber(actualRank * 10000)} individual typing actions`,
-        ],
-        ["net", fmtNumber(data.net)],
-        ["added", fmtNumber(data.added)],
-        ["deleted", fmtNumber(data.deleted)],
-        [
-            "languages",
-            data.languages
-                .map((entry) => entry.language)
-                .sort()
-                .join(", "),
-        ],
-        ["average net per rank", fmtNumber(data.net / actualRank)],
-        ["average added per rank", fmtNumber(data.added / actualRank)],
-        ["average deleted per rank", fmtNumber(data.deleted / actualRank)],
-        [
-            "most used character",
-            fmtKeyVal(
-                Object.entries(data.chars).reduce(
-                    (max, [key, value]) => (value > max[1] ? [key, value] : max),
-                    [null, -Infinity]
-                ),
-                { char: true }
-            ),
+            `${fmtNum(total.rank)}\n(${fmtNum(total.rank * 10000, 0)} individual typing actions)`,
         ],
         [
-            "least used character",
-            fmtKeyVal(
-                Object.entries(data.chars).reduce(
-                    (min, [key, value]) => (value < min[1] ? [key, value] : min),
-                    [null, Infinity]
-                ),
-                { char: true }
-            ),
+            "characters\n(desc. added)",
+            `${Object.entries(total.chars)
+                .sort(([, a], [, b]) => b.added - a.added)
+                .map(([char]) => fmtChar(char))
+                .join(", ")} (${Object.keys(total.chars).length})`,
         ],
         [
-            "most added language",
-            fmtKeyVal(
-                data.languages.reduce(
-                    (max, { language, added }) => (added > max.added ? { language, added } : max),
-                    { language: "", added: -Infinity }
-                )
-            ),
+            "languages\n(desc. typing actions)",
+            `${Object.entries(languageMap)
+                .sort(([, a], [, b]) => b - a)
+                .map(([lang]) => lang)
+                .join(", ")} (${Object.keys(languageMap).length})`,
         ],
         [
-            "least added language",
-            fmtKeyVal(
-                data.languages.reduce(
-                    (min, { language, added }) => (added < min.added ? { language, added } : min),
-                    { language: "", added: Infinity }
-                )
-            ),
+            "editors\n(desc. typing actions)",
+            `${Object.entries(editorMap)
+                .sort(([, a], [, b]) => b - a)
+                .map(([editor]) => editor)
+                .join(
+                    ", "
+                )} (${Object.keys(editorMap).length})\n[supported editors: ${SUPPORTED_EDITORS.join(", ")}]`,
         ],
         [
-            "most deleted language",
-            fmtKeyVal(
-                data.languages.reduce(
-                    (max, { language, deleted }) =>
-                        deleted > max.deleted ? { language, deleted } : max,
-                    { language: "", deleted: -Infinity }
-                )
-            ),
-        ],
-        [
-            "least deleted language",
-            fmtKeyVal(
-                data.languages.reduce(
-                    (min, { language, deleted }) =>
-                        deleted < min.deleted ? { language, deleted } : min,
-                    { language: "", deleted: Infinity }
-                )
-            ),
+            "machines\n(desc. typing actions)",
+            `${Object.entries(machineMap)
+                .sort(([, a], [, b]) => b.rank - a.rank)
+                .map(([, entry]) => entry.name)
+                .join(", ")} (${Object.keys(machineMap).length})`,
         ],
     ]);
-    buildKeyValTable("stats-table", rows);
+
+    const addedDeleteNetRows = new Map([
+        [
+            "total",
+            [
+                fmtNum(total.added),
+                fmtNum(total.deleted),
+                fmtNum(total.added + total.deleted),
+                fmtNum(total.added - total.deleted),
+            ],
+        ],
+        [
+            "typed",
+            [
+                fmtNum(total.added_typed),
+                fmtNum(total.deleted_typed),
+                fmtNum(total.added_typed + total.deleted_typed),
+                fmtNum(total.added_typed - total.deleted_typed),
+            ],
+        ],
+        [
+            "pasted / cut",
+            [
+                fmtNum(total.added_pasted),
+                fmtNum(total.deleted_cut),
+                fmtNum(total.added_pasted + total.deleted_cut),
+                fmtNum(total.added_pasted - total.deleted_cut),
+            ],
+        ],
+        [
+            "no. pastes / cuts",
+            [
+                fmtNum(total.num_pastes),
+                fmtNum(total.num_cuts),
+                fmtNum(total.num_pastes + total.num_cuts),
+                fmtNum(total.num_pastes - total.num_cuts),
+            ],
+        ],
+        [
+            "ave. per paste / cut",
+            [
+                fmtNum(total.added_pasted / total.num_pastes),
+                fmtNum(total.deleted_cut / total.num_cuts),
+                fmtNum(1),
+                fmtNum(1),
+            ],
+        ],
+        [
+            "ave. per rank",
+            [
+                fmtNum(total.added / total.rank),
+                fmtNum(total.deleted / total.rank),
+                fmtNum((total.added + total.deleted) / total.rank),
+                fmtNum((total.added - total.deleted) / total.rank),
+            ],
+        ],
+    ]);
+    buildKeyValTable("base-stats-table", baseStatsRows);
+    buildAddDeleteNetTable("add-delete-net-table", addedDeleteNetRows);
 };
 
 const initializeStatsTable = (coderankData) => {
-    const yearSelect = document.getElementById("year-select");
-    const weekSelect = document.getElementById("week-select");
+    const durationSelect = document.getElementById("duration-select");
+    const years = Object.keys(coderankData.years);
+    const weeks = Object.keys(coderankData.pastFiveWeeks);
+
     const update = () => {
-        const year = yearSelect.value;
-        const week = weekSelect.value;
-        const data = coderankData.get(year);
-        populateStatsTable(year === "all" || week === "all" ? data : data.weeks[week - 1]);
+        const duration = durationSelect.value;
+        if (years.includes(duration)) {
+            populateStatsTable(coderankData.years[duration]);
+        } else if (weeks.includes(duration)) {
+            populateStatsTable(coderankData.pastFiveWeeks[duration]);
+        } else if (duration === "1 year") {
+            populateStatsTable(coderankData.years[Math.max(...years)]);
+        } else if (duration === "1 week") {
+            populateStatsTable(coderankData.pastFiveWeeks[getMostRecentWeek(weeks)]);
+        } else if (duration === "5 weeks") {
+            populateStatsTable(sumDurationData(coderankData.pastFiveWeeks));
+        } else if (duration === "5 years") {
+            populateStatsTable(sumDurationData(coderankData.years, getLatestYears(years)));
+        } else {
+            populateStatsTable(sumDurationData(coderankData.years));
+        }
     };
 
-    buildSelect("year-select", coderankData.keys(), {
+    const [durationKeys, durationVals] = getDurationKeyVals(weeks, years);
+
+    buildSelect("duration-select", durationKeys, {
+        optionText: durationVals,
         onChange: () => {
-            buildWeekSelect(coderankData, yearSelect.value, "week-select", update);
             update();
         },
     });
-    selectVal("year-select", "all");
+    selectVal("duration-select", "all time");
 };
 
 let langChart = null;
