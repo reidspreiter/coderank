@@ -287,7 +287,7 @@ export class Coderank {
                 `Completing auto push for frequency ${config.pushReminderFrequency}`,
                 "Completing auto push",
                 `Succesfully completed auto push for frequency ${config.pushReminderFrequency}`,
-                `Error completing auto push for frequency ${config.pushReminderFrequency}`,
+                `Error completing auto push for frequency ${config.pushReminderFrequency}`
             );
         }
     }
