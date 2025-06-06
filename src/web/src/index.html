@@ -38,7 +38,11 @@
                     <div class="selection">
                         <p>
                             duration:
-                            <select name="duration-select" id="duration-select"></select>
+                            <select
+                                name="duration-select"
+                                id="duration-select"
+                                class="long-select"
+                            ></select>
                         </p>
                     </div>
                     <div style="padding: 10px">
@@ -50,16 +54,20 @@
                     <div class="section-header">Languages</div>
                     <div class="selection">
                         <p>
-                            year:
-                            <select name="lang-year-select" id="lang-year-select"></select>
-                        </p>
-                        <p>
-                            week:
+                            duration:
                             <select
-                                name="lang-week-select"
-                                id="lang-week-select"
+                                name="lang-duration-select"
+                                id="lang-duration-select"
                                 class="long-select"
                             ></select>
+                        </p>
+                        <p>
+                            machine:
+                            <select name="lang-machine-select" id="lang-machine-select"></select>
+                        </p>
+                        <p>
+                            editor:
+                            <select name="lang-editor-select" id="lang-editor-select"></select>
                         </p>
                         <p>
                             value:
@@ -89,16 +97,16 @@
                     <div class="section-header">Characters</div>
                     <div class="selection">
                         <p>
-                            year:
-                            <select name="char-year-select" id="char-year-select"></select>
+                            duration:
+                            <select name="char-duration-select" id="char-duration-select"></select>
                         </p>
                         <p>
-                            week:
-                            <select
-                                name="char-week-select"
-                                id="char-week-select"
-                                class="long-select"
-                            ></select>
+                            machine:
+                            <select name="char-machine-select" id="char-machine-select"></select>
+                        </p>
+                        <p>
+                            editor:
+                            <select name="char-editor-select" id="char-editor-select"></select>
                         </p>
                         <p>
                             language:
@@ -119,6 +127,10 @@
                         <p>
                             order:
                             <select name="char-order-select" id="char-order-select"></select>
+                        </p>
+                        <p>
+                            order value:
+                            <select name="char-value-select" id="char-value-select"></select>
                         </p>
                     </div>
                     <div class="scroll restrict-height">
