@@ -160,7 +160,7 @@ export class Coderank {
     ): Promise<boolean> {
         let aborted = false;
         let newRemoteDisplay = s.CoderankProviderStatsSchema.parse({});
-        const pushRecord = (await this.getPushRecord()) || s.PushRecordSchema.parse({});
+        let pushRecord = (await this.getPushRecord()) || s.PushRecordSchema.parse({});
 
         if (pushRecord.activePush) {
             const result = await v.window.showWarningMessage(
@@ -252,7 +252,22 @@ export class Coderank {
             pushRecord.activePush = false;
             await this.setPushRecord(pushRecord);
         } else {
-            await this.setPushRecord(s.getCurrentPushRecord());
+            pushRecord = s.getCurrentPushRecord(pushRecord.askedToSaveCredentials);
+            await this.setPushRecord(pushRecord);
+        }
+
+        if (!(aborted || pushRecord.askedToSaveCredentials || options.saveCredentials)) {
+            const result = await v.window.showInformationMessage(
+                "Would you like coderank to save your GitHub username and PAT?\n\nThis can be modified later by toggling coderank.saveCredentials.\n\nIt is recommended to scope your PAT to your coderank repository only to avoid potential security issues with VS Code's secret storage: https://cycode.com/blog/exposing-vscode-secrets/",
+                { modal: false },
+                "Yes",
+                "No",
+            );
+            if (result === "Yes") {
+                await setConfigValue("saveCredentials", true);
+            }
+            pushRecord.askedToSaveCredentials = true;
+            await this.setPushRecord(pushRecord);
         }
         return aborted;
     }
@@ -267,7 +282,7 @@ export class Coderank {
         // Most likely the first time the user has activated the extension
         // Write initial push record so they will be reminded the next time a push is overdue
         if (prevPushRecord === null) {
-            await this.setPushRecord(s.getCurrentPushRecord());
+            await this.setPushRecord(s.getCurrentPushRecord(false));
             return;
         }
 

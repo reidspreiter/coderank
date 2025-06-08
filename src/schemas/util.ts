@@ -28,7 +28,7 @@ export function shallowEqual<T extends object>(objA: T, objB: T): boolean {
     return true;
 }
 
-export function getCurrentPushRecord(): s.PushRecord {
+export function getCurrentPushRecord(askedToSaveCredentials: boolean = true): s.PushRecord {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
@@ -40,6 +40,7 @@ export function getCurrentPushRecord(): s.PushRecord {
         month: String(now.getMonth() + 1),
         week: String(weekNumber),
         day: String(now.getDate()),
+        askedToSaveCredentials,
     });
 }
 
