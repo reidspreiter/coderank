@@ -2,6 +2,13 @@
 
 All notable changes to the "coderank" extension will be documented in this file.
 
+## [0.4.0]
+
+- Update schemas to track machines and editors
+- Update the web viewer for schema changes
+- Add `coderank.setMachineName` and `coderank.reconfigureMachine` commands
+- Add log verbosity
+
 ## [0.3.0]
 
 - Track programming languages
