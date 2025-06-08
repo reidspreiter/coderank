@@ -97,6 +97,11 @@
           ],
           "default": "weekly",
           "markdownDescription": "How often coderank reminds you to push your data to remote on startup.\n\nOptions: `\"daily\"`, `\"daily-force\"`, `\"weekly\"`, `\"weekly-force\"`, or `\"never\"`.\n\nAn option with `-force` will avoid the reminder and automatically prompt you to login.\n\nIf `coderank.saveCredentials` is set, the push process will start automatically.\n\nDefault = `\"weekly\"`"
+        },
+        "coderank.autoUpdateWebViewer": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "When enabled, pending web viewer updates are applied automatically.\n\nDisabling this is recommended if the remote repository contains custom web viewer files.\n\nDefault = `true`"
         }
       }
     },

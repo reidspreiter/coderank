@@ -1,6 +1,14 @@
+/*
+ * If this page is customized, set `coderank.autoUpdateWebViewer` 
+ * to `false` to prevent changes from being overwritten. 
+ *
+ * Web viewer updates can be found here: https://github.com/reidspreiter/coderank
+ */
+
 :root {
     --bg: #282828;
-    --alt-bg: #181818;
+    --border: #181818;
+    --alt-bg: #212121;
     --text: whitesmoke;
     --blue: #48aa9f;
     --orange: #e18731;
@@ -144,19 +152,37 @@ select {
 
 table {
     table-layout: fixed;
+    margin: 10px 0px;
+    border-radius: 5px;
+    border-spacing: 0px;
     width: 100%;
+    font-weight: 100;
+    border: 2px solid var(--border);
 }
 
 tr {
     height: 30px;
 
-    &:nth-child(even) {
+    &:nth-child(odd) {
         background-color: var(--alt-bg);
     }
 }
 
+th {
+    background-color: var(--border);
+}
+
 td {
+    border-right: 2px solid var(--border);
     padding: 5px;
+
+    &:last-child {
+        border-right: none;
+    }
+}
+
+.right {
+    text-align: right;
 }
 
 .restrict-height {

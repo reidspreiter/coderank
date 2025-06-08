@@ -7,7 +7,12 @@ import { Coderank } from "../../coderank/coderank.js";
 import * as s from "../../schemas/index.js";
 import { openTextDocument, getTestContext, writeText, deleteTextBeforeCursor } from "../util.js";
 
-function textContentEvent(range: v.Range, rangeLength: number, text: string = "", rangeOffset: number = 0): v.TextDocumentContentChangeEvent {
+function textContentEvent(
+    range: v.Range,
+    rangeLength: number,
+    text: string = "",
+    rangeOffset: number = 0
+): v.TextDocumentContentChangeEvent {
     return {
         range,
         rangeOffset,
@@ -16,10 +21,14 @@ function textContentEvent(range: v.Range, rangeLength: number, text: string = ""
     };
 }
 
-function textEvent(scheme: string, fileName: string, contentChanges: v.TextDocumentContentChangeEvent[] = []): v.TextDocumentChangeEvent {
+function textEvent(
+    scheme: string,
+    fileName: string,
+    contentChanges: v.TextDocumentContentChangeEvent[] = []
+): v.TextDocumentChangeEvent {
     return {
         document: {
-            uri: v.Uri.from({scheme}),
+            uri: v.Uri.from({ scheme }),
             fileName,
             isUntitled: false,
             languageId: "unknown",
@@ -65,7 +74,7 @@ function textEvent(scheme: string, fileName: string, contentChanges: v.TextDocum
 
             validatePosition(position: v.Position): v.Position {
                 return position;
-            }
+            },
         },
         contentChanges,
         reason: undefined,
@@ -168,13 +177,21 @@ suite("Test stats", () => {
                             ]),
                             textEvent("git-rebase-todo", "file"),
                             textEvent("git-rebase-todo", "file", [
-                                textContentEvent(new v.Range(0, 0, 34, 0), 1578, "pick d3549d462be573e66225febb6b350812062aa25a"),
+                                textContentEvent(
+                                    new v.Range(0, 0, 34, 0),
+                                    1578,
+                                    "pick d3549d462be573e66225febb6b350812062aa25a"
+                                ),
                             ]),
                             textEvent("stats.test.ts", "file", [
                                 textContentEvent(new v.Range(0, 0, 185, 0), 6887, "file contents"),
                             ]),
                             textEvent("stats.test.ts", "file", [
-                                textContentEvent(new v.Range(9, 0, 181, 0), 6719, "<<<<<<< HEADfile contents during merge conflict=======more contents>>>>>>> 897511c (test commit to reorder)"),
+                                textContentEvent(
+                                    new v.Range(9, 0, 181, 0),
+                                    6719,
+                                    "<<<<<<< HEADfile contents during merge conflict=======more contents>>>>>>> 897511c (test commit to reorder)"
+                                ),
                             ]),
                             textEvent("stats.test.ts", "git", [
                                 textContentEvent(new v.Range(9, 0, 181, 0), 6547, "file contents"),
@@ -184,7 +201,11 @@ suite("Test stats", () => {
                                 textContentEvent(new v.Range(0, 0, 118, 0), 4884, "file contents"),
                             ]),
                             textEvent("stats.test.ts", "file", [
-                                textContentEvent(new v.Range(35, 0, 114, 0), 3617, "contents moved for rebase"),
+                                textContentEvent(
+                                    new v.Range(35, 0, 114, 0),
+                                    3617,
+                                    "contents moved for rebase"
+                                ),
                             ]),
                             textEvent("stats.test.ts", "file"),
                             textEvent("input", "vscode-scm", [

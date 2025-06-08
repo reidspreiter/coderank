@@ -34,7 +34,7 @@ export class Logger {
         if (verbosity === this._verbosity) {
             return;
         }
-        
+
         this._verbosity = verbosity;
         if (verbosity) {
             this.outputChannel.show();

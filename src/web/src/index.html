@@ -1,3 +1,9 @@
+<!-- 
+ If this page is customized, set `coderank.autoUpdateWebViewer` 
+ to `false` to prevent changes from being overwritten. 
+
+ Web viewer updates can be found here: https://github.com/reidspreiter/coderank
+ -->
 <!doctype html>
 <html lang="en">
     <head>
@@ -37,35 +43,44 @@
                     <div class="section-header">Quick Stats</div>
                     <div class="selection">
                         <p>
-                            year:
-                            <select name="year-select" id="year-select"></select>
-                        </p>
-                        <p>
-                            week:
+                            duration:
                             <select
-                                name="week-select"
-                                id="week-select"
+                                name="duration-select"
+                                id="duration-select"
                                 class="long-select"
                             ></select>
                         </p>
                     </div>
                     <div style="padding: 10px">
-                        <table id="stats-table"></table>
+                        <table id="base-stats-table"></table>
+                        <table id="add-delete-net-table"></table>
                     </div>
                 </section>
                 <section>
                     <div class="section-header">Languages</div>
                     <div class="selection">
                         <p>
-                            year:
-                            <select name="lang-year-select" id="lang-year-select"></select>
+                            duration:
+                            <select
+                                name="lang-duration-select"
+                                id="lang-duration-select"
+                                class="long-select"
+                            ></select>
                         </p>
                         <p>
-                            week:
+                            machine:
                             <select
-                                name="lang-week-select"
-                                id="lang-week-select"
-                                class="long-select"
+                                name="lang-machine-select"
+                                id="lang-machine-select"
+                                class="medium-select"
+                            ></select>
+                        </p>
+                        <p>
+                            editor:
+                            <select
+                                name="lang-editor-select"
+                                id="lang-editor-select"
+                                class="medium-select"
                             ></select>
                         </p>
                         <p>
@@ -96,15 +111,27 @@
                     <div class="section-header">Characters</div>
                     <div class="selection">
                         <p>
-                            year:
-                            <select name="char-year-select" id="char-year-select"></select>
+                            duration:
+                            <select
+                                name="char-duration-select"
+                                id="char-duration-select"
+                                class="long-select"
+                            ></select>
                         </p>
                         <p>
-                            week:
+                            machine:
                             <select
-                                name="char-week-select"
-                                id="char-week-select"
-                                class="long-select"
+                                name="char-machine-select"
+                                id="char-machine-select"
+                                class="medium-select"
+                            ></select>
+                        </p>
+                        <p>
+                            editor:
+                            <select
+                                name="char-editor-select"
+                                id="char-editor-select"
+                                class="medium-select"
                             ></select>
                         </p>
                         <p>
@@ -116,16 +143,15 @@
                             ></select>
                         </p>
                         <p>
-                            num:
-                            <select
-                                name="char-num-select"
-                                id="char-num-select"
-                                class="medium-select"
-                            ></select>
-                        </p>
-                        <p>
                             order:
                             <select name="char-order-select" id="char-order-select"></select>
+                        </p>
+                        <p>
+                            order val:
+                            <select
+                                name="char-order-val-select"
+                                id="char-order-val-select"
+                            ></select>
                         </p>
                     </div>
                     <div class="scroll restrict-height">

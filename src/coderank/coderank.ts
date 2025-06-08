@@ -128,17 +128,35 @@ export class Coderank {
 
     async pushLocalToRemote(
         context: v.ExtensionContext,
-        options: Partial<GitLoginOptions> = {},
-        primaryActionCallback?: RemoteFileCallback,
-        primaryActionTitle: string = "Pushing local storage to remote repository",
-        primaryActionProgressMessage: string = "Performing primary action",
-        primaryActionSuccessMessage: string = "Successfully pushed local values to remote repository",
-        primaryActionFailureMessage: string = "Error pushing local values to remote repository",
-        webViewerOptions: { showMessage: boolean; force: boolean } = {
-            showMessage: false,
-            force: false,
-        },
-        treatWebViewerAsPrimaryAction: boolean = false
+        {
+            options = {},
+            primaryActionCallback,
+            primaryActionMsg = {
+                title: "Pushing local storage to remote repository",
+                progress: "Performing primary action",
+                success: "Successfully pushed local values to remote repository",
+                failure: "Error pushing local values to remote repository",
+            },
+            webViewerOptions = {
+                autoUpdate: true,
+                showMessage: false,
+                force: false,
+            },
+            autoUpdateWebViewer = true,
+            treatWebViewerAsPrimaryAction = false,
+        }: {
+            options?: Partial<GitLoginOptions>;
+            primaryActionCallback?: RemoteFileCallback;
+            primaryActionMsg?: {
+                title: string;
+                progress: string;
+                success: string;
+                failure: string;
+            };
+            webViewerOptions?: { showMessage: boolean; force: boolean; autoUpdate: boolean };
+            autoUpdateWebViewer?: boolean;
+            treatWebViewerAsPrimaryAction?: boolean;
+        } = {}
     ): Promise<boolean> {
         let aborted = false;
         let newRemoteDisplay = s.CoderankProviderStatsSchema.parse({});
@@ -162,7 +180,7 @@ export class Coderank {
         await v.window.withProgress(
             {
                 location: v.ProgressLocation.Notification,
-                title: primaryActionTitle,
+                title: primaryActionMsg.title,
             },
             async (progress) => {
                 const reportProgress = (increment: number, message: string): void => {
@@ -184,7 +202,10 @@ export class Coderank {
                                 (registry) => this.setMachineRegistry(registry)
                             );
 
-                            if (await remote.shouldUpdateWebRecord(webViewerOptions)) {
+                            if (
+                                autoUpdateWebViewer &&
+                                (await remote.shouldUpdateWebRecord(webViewerOptions))
+                            ) {
                                 reportProgress(50, "Updating web viewer");
                                 const webViewerAborted =
                                     await remote.updateWebViewer(webViewerOptions);
@@ -195,7 +216,7 @@ export class Coderank {
                             }
 
                             if (primaryActionCallback !== undefined) {
-                                reportProgress(60, primaryActionProgressMessage);
+                                reportProgress(60, primaryActionMsg.progress);
                                 aborted = await remote.updateData(primaryActionCallback);
                                 if (aborted) {
                                     return true;
@@ -219,9 +240,9 @@ export class Coderank {
                     this._remoteDisplay = newRemoteDisplay;
                     this._flushedToRemote = true;
 
-                    v.window.showInformationMessage(primaryActionSuccessMessage);
+                    v.window.showInformationMessage(primaryActionMsg.success);
                 } catch (err) {
-                    v.window.showErrorMessage(`${primaryActionFailureMessage}: ${err}`);
+                    v.window.showErrorMessage(`${primaryActionMsg.failure}: ${err}`);
                     aborted = true;
                 }
             }
@@ -280,27 +301,27 @@ export class Coderank {
                 }
             }
 
-            await this.pushLocalToRemote(
-                context,
-                { saveCredentials: config.saveCredentials },
-                undefined,
-                `Completing auto push for frequency ${config.pushReminderFrequency}`,
-                "Completing auto push",
-                `Succesfully completed auto push for frequency ${config.pushReminderFrequency}`,
-                `Error completing auto push for frequency ${config.pushReminderFrequency}`,
-            );
+            await this.pushLocalToRemote(context, {
+                options: { saveCredentials: config.saveCredentials },
+                primaryActionMsg: {
+                    title: `Completing auto push for frequency ${config.pushReminderFrequency}`,
+                    progress: "Completing auto push",
+                    success: `Succesfully completed auto push for frequency ${config.pushReminderFrequency}`,
+                    failure: `Error completing auto push for frequency ${config.pushReminderFrequency}`,
+                },
+                autoUpdateWebViewer: config.autoUpdateWebViewer,
+            });
         }
     }
 
     async setMachineName(context: v.ExtensionContext, config: Config) {
         let newMachineName: string | undefined = undefined;
-        const aborted = await this.pushLocalToRemote(
-            context,
-            {
+        const aborted = await this.pushLocalToRemote(context, {
+            options: {
                 saveCredentials: config.saveCredentials,
                 commitMessage: "change machine name",
             },
-            async (remoteFile) => {
+            primaryActionCallback: async (remoteFile) => {
                 const { name: oldName, id } = await this.getMachineRegistry();
                 newMachineName = await v.window.showInputBox({
                     prompt: "Enter the new name for this machine",
@@ -316,11 +337,14 @@ export class Coderank {
                 s.updateMachineField(remoteFile, id, "name", newMachineName);
                 return remoteFile;
             },
-            "Changing Machine Name",
-            "Changing machine name",
-            "Successfully changed machine name",
-            "Error changing machine name"
-        );
+            primaryActionMsg: {
+                title: "Changing Machine Name",
+                progress: "Changing machine name",
+                success: "Successfully changed machine name",
+                failure: "Error changing machine name",
+            },
+            autoUpdateWebViewer: config.autoUpdateWebViewer,
+        });
 
         if (!aborted && newMachineName) {
             const machineRegistry = await this.getMachineRegistry();
@@ -333,13 +357,12 @@ export class Coderank {
         const { name: oldName, id: oldID } = await this.getMachineRegistry();
         let newMachineRegistry: s.MachineRegistry | undefined = undefined;
 
-        const aborted = await this.pushLocalToRemote(
-            context,
-            {
+        const aborted = await this.pushLocalToRemote(context, {
+            options: {
                 saveCredentials: config.saveCredentials,
                 commitMessage: `reconfigure machine '${oldName}'`,
             },
-            async (remoteFile) => {
+            primaryActionCallback: async (remoteFile) => {
                 const existingMachineItems: MachineItem[] = [
                     new MachineItem(
                         "Abort",
@@ -386,11 +409,14 @@ export class Coderank {
                 });
                 return remoteFile;
             },
-            "Reconfiguring Machine",
-            "Combining machine data",
-            "Successfully reconfigured machine",
-            "Error reconfiguring machine"
-        );
+            primaryActionMsg: {
+                title: "Reconfiguring Machine",
+                progress: "Combining machine data",
+                success: "Successfully reconfigured machine",
+                failure: "Error reconfiguring machine",
+            },
+            autoUpdateWebViewer: config.autoUpdateWebViewer,
+        });
 
         if (!aborted && newMachineRegistry) {
             await this.setMachineRegistry(newMachineRegistry);
