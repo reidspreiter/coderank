@@ -8,12 +8,14 @@ export type Config = {
     saveCredentials: boolean;
     pushReminderFrequency: PromptToPushFrequency;
     logVerbosity: LogVerbosity;
+    autoUpdateWebViewer: boolean;
 };
 
 export const DEFAULT_CONFIG: Config = {
     saveCredentials: false,
     pushReminderFrequency: "weekly",
     logVerbosity: "",
+    autoUpdateWebViewer: true,
 };
 
 export function getConfig(): Config {
@@ -25,6 +27,10 @@ export function getConfig(): Config {
             DEFAULT_CONFIG.pushReminderFrequency
         ),
         logVerbosity: config.get<LogVerbosity>("logVerbosity", DEFAULT_CONFIG.logVerbosity),
+        autoUpdateWebViewer: config.get<boolean>(
+            "autoUpdateWebViewer",
+            DEFAULT_CONFIG.autoUpdateWebViewer
+        ),
     };
 }
 

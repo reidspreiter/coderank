@@ -51,24 +51,30 @@ export async function activate(context: ExtensionContext) {
 
     context.subscriptions.push(
         commands.registerCommand("coderank.pushLocalToRemote", async () => {
-            await coderank.pushLocalToRemote(context, { saveCredentials: config.saveCredentials });
+            await coderank.pushLocalToRemote(context, {
+                options: { saveCredentials: config.saveCredentials },
+                autoUpdateWebViewer: config.autoUpdateWebViewer,
+            });
             provider.setStats(coderank);
         })
     );
 
     context.subscriptions.push(
         commands.registerCommand("coderank.updateWebViewer", async () => {
-            await coderank.pushLocalToRemote(
-                context,
-                { saveCredentials: config.saveCredentials, commitMessage: "update web viewer" },
-                undefined,
-                "Updating web viewer in remote repository",
-                undefined,
-                "Successfully updated web viewer in remote repository",
-                "Error updating web viewer in remote repository",
-                { force: true, showMessage: true },
-                true
-            );
+            await coderank.pushLocalToRemote(context, {
+                options: {
+                    saveCredentials: config.saveCredentials,
+                    commitMessage: "update web viewer",
+                },
+                primaryActionMsg: {
+                    title: "Updating web viewer in remote repository",
+                    progress: "",
+                    success: "Successfully updated web viewer in remote repository",
+                    failure: "Error updating web viewer in remote repository",
+                },
+                webViewerOptions: { force: true, showMessage: true, autoUpdate: true },
+                treatWebViewerAsPrimaryAction: true,
+            });
         })
     );
 
