@@ -1,3 +1,10 @@
+//
+// If this page is customized, set `coderank.autoUpdateWebViewer`
+// to `false` to prevent changes from being overwritten.
+//
+// Web viewer updates can be found here: https://github.com/reidspreiter/coderank
+//
+
 const SUPPORTED_VERSIONS = ["0.4.0"];
 const SUPPORTED_EDITORS = ["VS Code"];
 const POSSIBLE_LANGUAGE_VALUES = [
@@ -45,7 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const coderankData = await loadCoderankData();
         initializeStatsTable(coderankData);
         initializeLangChart(coderankData);
-        // initializeCharChart(coderankData);
+        initializeCharChart(coderankData);
         removeLoader();
     } catch (err) {
         showAlertModal(
@@ -159,6 +166,17 @@ const copy = (data) => {
 //
 // Schema helpers
 //
+
+const possibleCharacterValueToFieldName = (value) => {
+    switch (value) {
+        case "added typed":
+            return "added_typed";
+        case "added pasted":
+            return "added_pasted";
+        default:
+            return value;
+    }
+};
 
 const computeValueFromMainStats = (mainStats, value) => {
     switch (value) {
@@ -410,6 +428,41 @@ const getCharactersMapInDuration = (data, keys = undefined, machine, editor, lan
         }
     }
     return characterMap;
+};
+
+const getCharactersDataInDuration = (
+    data,
+    keys = undefined,
+    machine = "all",
+    editor = "all",
+    language = "all"
+) => {
+    let characters = undefined;
+    const desiredKeys = getDesiredKeys(data, keys);
+
+    for (const key of desiredKeys) {
+        const machines =
+            machine === "all" ? Object.values(data[key].machines) : [data[key].machines[machine]];
+        for (const machineData of machines) {
+            const editors =
+                editor === "all"
+                    ? Object.values(machineData.editors)
+                    : [machineData.editors[editor]];
+            for (const editorData of editors) {
+                const languages =
+                    language === "all"
+                        ? Object.values(editorData.languages)
+                        : [editorData.languages[language]];
+                for (const languageData of languages) {
+                    characters =
+                        characters === undefined
+                            ? copy(languageData.chars)
+                            : sumCharMaps(characters, languageData.chars);
+                }
+            }
+        }
+    }
+    return characters;
 };
 
 const sumTotalMainStatsAndTypingActionsForLanguagesEditorsMachines = (data) => {
@@ -665,7 +718,7 @@ const populateStatsTable = (data) => {
     const baseStatsRows = new Map([
         [
             "rank",
-            `${fmtNum(total.rank)}\n(${fmtNum(total.rank * 10000, 0)} individual text entry actions)`,
+            `${fmtNum(total.rank)}\n\n(${fmtNum(total.rank * 10000, 0)} individual text entry actions)`,
         ],
         [
             "characters\n(desc. added)",
@@ -688,7 +741,7 @@ const populateStatsTable = (data) => {
                 .map(([editor]) => editor)
                 .join(
                     ", "
-                )} (${Object.keys(editorMap).length})\n[supported editors: ${SUPPORTED_EDITORS.join(", ")}]`,
+                )} (${Object.keys(editorMap).length})\n\n[coderank supported editors: ${SUPPORTED_EDITORS.join(", ")}]`,
         ],
         [
             "machines\n(desc. typing actions)",
@@ -922,26 +975,27 @@ const initializeLangChart = (coderankData) => {
 //
 
 let charChart = null;
-const populateCharChart = (chars, num, order) => {
+const populateCharChart = (chars, order, orderVal) => {
     const canvas = document.getElementById("char-chart");
+    const field = possibleCharacterValueToFieldName(orderVal);
     const characters = [];
     const amounts = [];
-    const keyvals = Object.entries(chars).sort(
-        order === "asc. amount"
-            ? (a, b) => a[1] - b[1]
-            : order === "desc. amount"
-              ? (a, b) => b[1] - a[1]
-              : order === "asc. char"
+    let compareFunction;
+    if (orderVal === "char") {
+        compareFunction =
+            order === "asc."
                 ? (a, b) => a[0].localeCompare(b[0])
-                : (a, b) => b[0].localeCompare(a[0])
-    );
-
-    for (const [i, keyval] of keyvals.entries()) {
-        if (i >= num) {
-            break;
-        }
+                : (a, b) => b[0].localeCompare(a[0]);
+    } else {
+        compareFunction =
+            order === "asc."
+                ? (a, b) => a[1][field] - b[1][field]
+                : (a, b) => b[1][field] - a[1][field];
+    }
+    const keyvals = Object.entries(chars).sort(compareFunction);
+    for (const keyval of keyvals) {
         characters.push(fmtChar(keyval[0]));
-        amounts.push(keyval[1]);
+        amounts.push(keyval[1][orderVal === "char" ? "added" : field]);
     }
 
     if (charChart === null) {
@@ -951,7 +1005,7 @@ const populateCharChart = (chars, num, order) => {
                 labels: characters,
                 datasets: [
                     {
-                        label: "added",
+                        label: orderVal === "char" ? "added" : orderVal,
                         data: amounts,
                         backgroundColor: chartColors,
                         borderColor: "#282828",
@@ -993,6 +1047,7 @@ const populateCharChart = (chars, num, order) => {
     } else {
         charChart.data.labels = characters;
         charChart.data.datasets[0].data = amounts;
+        charChart.data.datasets[0].label = orderVal === "char" ? "added" : orderVal;
 
         const bars = characters.length;
         let chartHeight = 300;
@@ -1008,124 +1063,73 @@ const populateCharChart = (chars, num, order) => {
 };
 
 const initializeCharChart = (coderankData) => {
-    const yearSelect = document.getElementById("char-year-select");
-    const weekSelect = document.getElementById("char-week-select");
+    const durationSelect = document.getElementById("char-duration-select");
+    const machineSelect = document.getElementById("char-machine-select");
+    const editorSelect = document.getElementById("char-editor-select");
     const langSelect = document.getElementById("char-lang-select");
-    const numSelect = document.getElementById("char-num-select");
     const orderSelect = document.getElementById("char-order-select");
+    const orderValSelect = document.getElementById("char-order-val-select");
+
     const update = () => {
-        const year = yearSelect.value;
-        const week = weekSelect.value;
+        const duration = durationSelect.value;
+        const machine = machineSelect.value;
+        const editor = editorSelect.value;
         const language = langSelect.value;
-        const num = numSelect.value;
         const order = orderSelect.value;
-        let data = coderankData.get(year);
-        if ((year === "all" || week === "all") && language !== "all") {
-            let chars = {};
-            const doWithEntry = (entry) => {
-                chars = sumChars(chars, entry.chars);
-            };
-            year === "all"
-                ? parseAllWeekLangs(coderankData, doWithEntry, language)
-                : parseSpecificWeekLangs(data, doWithEntry, language);
-            populateCharChart(chars, num, order);
-            return;
-        } else if (year !== "all" && week !== "all") {
-            data = data.weeks[week - 1];
-            if (language !== "all") {
-                data = data.languages.find((entry) => entry.language === language);
-            }
-        }
-        populateCharChart(data.chars, num, order);
+        const orderVal = orderValSelect.value;
+
+        const characters = getCharactersDataInDuration(
+            ...getDataAndKeysFromDuration(coderankData, duration),
+            machine,
+            editor,
+            language
+        );
+        populateCharChart(characters, order, orderVal);
     };
 
-    const buildNumSelect = (year, week, language) => {
-        const currNum = Number(numSelect.value);
-        const currSelectedIndex = numSelect.options.selectedIndex;
-        let data = coderankData.get(year);
-        let total;
-
-        if (language !== "all") {
-            if (year === "all" || week === "all") {
-                const charSet = new Set();
-                const doWithEntry = (entry) =>
-                    Object.keys(entry.chars).forEach((char) => charSet.add(char));
-                year === "all"
-                    ? parseAllWeekLangs(coderankData, doWithEntry, language)
-                    : parseSpecificWeekLangs(data, doWithEntry, language);
-                total = charSet.size;
-            } else {
-                data = data.weeks[week - 1].languages.find((entry) => entry.language === language);
-            }
-        }
-
-        if (total === undefined) {
-            total = Object.keys(data.chars).length;
-        }
-
-        const possibleNums = [5, 10, 25, 50, 100];
-        const nums = possibleNums.filter((num) => num < total);
-        buildSelect("char-num-select", nums.concat(total), {
-            optionText: nums.concat(`all (${total})`),
-            onChange: update,
-        });
-
-        numSelect.value =
-            currNum === 0
-                ? 5
-                : currSelectedIndex === -1 || !nums.includes(currNum)
-                  ? total
-                  : currNum;
-    };
-
-    const buildLangSelect = (year, week) => {
-        const currLang = langSelect.value;
-        let data = coderankData.get(year);
-        if (year !== "all" && week !== "all") {
-            data = data.weeks[week - 1];
-        }
-        const validLanguages = data.languages
-            .reduce((langs, entry) => {
-                if (entry.added > 0) {
-                    langs.push(entry.language);
-                }
-                return langs;
-            }, [])
-            .sort();
-
-        buildSelect("char-lang-select", ["all"].concat(...validLanguages), {
-            onChange: () => {
-                buildNumSelect(year, week, langSelect.value);
+    buildDurationSelect("char-duration-select", coderankData, () => {
+        const duration = durationSelect.value;
+        buildMachineSelect(
+            "char-machine-select",
+            coderankData,
+            duration,
+            machineSelect.value,
+            () => {
+                const machine = machineSelect.value;
+                buildEditorSelect(
+                    "char-editor-select",
+                    coderankData,
+                    duration,
+                    machine,
+                    editorSelect.value,
+                    () => {
+                        buildLanguageSelect(
+                            "char-lang-select",
+                            coderankData,
+                            duration,
+                            machine,
+                            editorSelect.value,
+                            langSelect.value,
+                            () => {
+                                update();
+                            }
+                        );
+                        update();
+                    }
+                );
                 update();
-            },
-        });
-
-        if (validLanguages.includes(currLang)) {
-            langSelect.value = currLang;
-        }
-    };
-
-    buildSelect("char-year-select", coderankData.keys(), {
-        onChange: () => {
-            const year = yearSelect.value;
-            buildWeekSelect(coderankData, year, "char-week-select", () => {
-                const week = weekSelect.value;
-                buildLangSelect(year, week);
-                buildNumSelect(year, week, langSelect.value);
-                update();
-            });
-            const week = weekSelect.value;
-            buildLangSelect(year, week);
-            buildNumSelect(year, week, langSelect.value);
-            update();
-        },
+            }
+        );
+        update();
     });
 
-    buildSelect("char-order-select", ["asc. amount", "desc. amount", "asc. char", "desc. char"], {
+    buildSelect("char-order-select", ["asc.", "desc."], {
         onChange: update,
     });
 
-    selectVal("char-order-select", "desc. amount");
-    selectVal("char-num-select", "5");
-    selectVal("char-year-select", "all");
+    buildSelect("char-order-val-select", POSSIBLE_CHARACTER_VALUES.concat("char"), {
+        onChange: update,
+    });
+    selectVal("char-duration-select", "all time");
+    selectVal("char-order-select", "desc.");
 };

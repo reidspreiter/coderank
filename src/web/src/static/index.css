@@ -1,3 +1,10 @@
+/*
+ * If this page is customized, set `coderank.autoUpdateWebViewer` 
+ * to `false` to prevent changes from being overwritten. 
+ *
+ * Web viewer updates can be found here: https://github.com/reidspreiter/coderank
+ */
+
 :root {
     --bg: #282828;
     --border: #181818;
