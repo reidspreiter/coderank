@@ -2,7 +2,7 @@
   "name": "coderank",
   "displayName": "Coderank",
   "description": "Track your typing habbits from anywhere",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "repository": {
     "type": "github",
     "url": "https://github.com/reidspreiter/coderank.git"
