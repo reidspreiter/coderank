@@ -82,9 +82,8 @@ const loadCoderankData = async () => {
 };
 
 const showAlertModal = (message) => {
-    let modalMessage = document.getElementById("modal-message");
+    const modalMessage = document.getElementById("modal-message");
     modalMessage.innerText += modalMessage.innerText === "" ? message : `\n\n${message}`;
-    document.getElementById("modal-message").innerText += message;
     document.getElementById("modal").style.display = "block";
 };
 

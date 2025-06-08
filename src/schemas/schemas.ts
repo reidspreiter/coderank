@@ -23,6 +23,7 @@ export const PushRecordSchema = z.object({
     week: z.string().default(""),
     day: z.string().default(""),
     activePush: z.boolean().default(false),
+    askedToSaveCredentials: z.boolean().default(false),
 });
 export type PushRecord = z.infer<typeof PushRecordSchema>;
 
