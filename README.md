@@ -1,13 +1,19 @@
 <div align="center">
 
+
 # Coderank
+
 
 ![icon](./icon.png)
 
+
 </div>
 
+
 <p align="center">
- Curious how many semicolons you typed last week? What about double quotes over the past five years? Want to visualize all your coding data in one place from anywhere? Present your typing prowess on your GitHub profile? This extension is for you.
+ Curious how many semicolons you typed last week? What about double quotes over the past five years? Want to present your typing prowess on your GitHub profile like <a href="https://reidspreiter.github.io/reidspreiter-coderank/">this</a>?
+    <br>
+    Coderank is for you.
     <br>
     <br>
     <a href="https://github.com/reidspreiter/coderank/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.md&title=">Request a Feature</a>
@@ -15,144 +21,167 @@
     <a href="https://github.com/reidspreiter/coderank/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=">Report a Bug</a>
 </p>
 
+
 ## Installation
+
 
 With VS Code open, search for `coderank` in the extension panel (`Ctrl+Shift+X` on Windows/Linux or `Cmd(⌘)+Shift+X` on MacOS) and click install.
 
+
 OR
 
+
 With VS Code open, launch VS Code Quick Open (`Ctrl+P` on Windows/Linux or `Cmd(⌘)+P` on MacOS), paste the following command, and press enter:
+
 
 ```
 ext install reidspreiter.coderank
 ```
 
+
 OR
 
-Install this extension from the VS Code Marketplace (coming soon)
+
+Install Coderank from the VS Code Marketplace.
+
+
+OR
+
+
+Install the `.vsix` file from the [coderank repository](https://github.com/reidspreiter/coderank/releases).
+
+
+<br>
 
 ## Using Coderank
 
-Thank you for installing Coderank! This document is the best way to get started, and a video presentation is available if needed (coming soon).
+
+Thank you for installing Coderank! This document is the best way to get started.
+
+<br>
 
 ### Explorer Panel
 
-Most interactions with Coderank occur in the added explorer panel.
 
-![Coderank Panel Location](./static/location.png)
-
-This panel includes dropdowns for project and local data, and the bottommost item displays the current remote rank.
-
-Project data is stored in your current window of VS Code, local data is saved to your local storage, and remote data aside is stored in your remote Coderank repository.
-
-Each dropdown includes the following:
-
-![Data descriptions](./static/panelDescriptions.png)
-
-- `Added`: amount of characters added over time via typing, pasting, typing with multiple cursors, etc.
-
-- `Deleted`: amount of characters deleted over time via pressing backspace, mass deleting, deleting with multiple cursors, etc.
-
-- `Total`: `Added` minus `Deleted`
-
-- `Character Count`: Amount of times each character has been pressed
-
-- `Rank`: 1 rank is equal to 10,000 coding actions. While `Added` and `Deleted` account for mass editing actions, `Rank` does not. Both typing the letter 'i' and pasting one million characters equal 0.0001 rank.
-
-### Project Data
-
-Each instance of VS Code is initialized with new project data. When a VS Code window is closed, project data is _deleted_.
-
-Project data is empty at first, but updates automatically after a set amount of typing actions. Project data can also be manually updated by clicking the refresh button in the top right of the panel.
-
-![Refresh Button](./static/refresh.png)
-
-Coderank includes checks to prevent events from being wrongfully tracked or ignored. However, a user's extensions and other unknown factors could slip by these checks. If an issue occurs, please [report the bug](https://github.com/reidspreiter/coderank/issues/new?assignees=&labels=bug&projects=&template=bug_report.md&title=).
+Most Coderank interactions occur in the explorer panel.
 
 
-### Local Data
+![Coderank Panel Location](./static/explorerPanel.png)
 
-When any workspace file is saved, project data is automatically saved to VS Code's global filesystem at: 
 
-```
-<Path-to-VS-Code>/User/globalStorage/reidspreiter.coderank/
-```
+Coderank analyzes the text you type and stores it locally in a global VS Code buffer whenever a document is saved.
 
-Project data can also be manually saved to local storage by clicking the local storage button in the top right of the panel.
 
-![Add to Local Storage](./static/projectToLocal.png)
+![Push Local To Remote Command](./static/localToRemote.png)
 
-All VS Code windows contribute data to the same location. Once project data is saved, it is removed from the project section of the Coderank panel and reflected in the local section.
 
-Coderank organizes data by week, creating a new `coderank<YYYY>.json` file for each year. Coderank also tracks programming languages used while typing, and organizes data by language within each week.
+The `coderank.pushLocalToRemote` command exports the local buffer to a GitHub repository. This allows extension data to be summed and synchronized across editors and machines.
 
-Please _avoid editing these files_, or you may experience problems with your extension and potentially lose data.
 
-A compressed backup file is updated every week. If needed, an available backup can be loaded via the `coderank.loadBackup` command which is also accessible through the `more actions...` section of the panel.
+Many data points are tracked, but only a few are shown in the explorer panel for simplicity. The [web viewer](#web-viewer) is a much better place to view your stats and share them with friends and followers!
 
-![Load Backup](./static/loadBackup.png)
+<br>
 
-### Remote Data
+### Pushing to GitHub
 
-Local data can be pushed to a remote GitHub repository. If you code on different machines at home and work, you can combine data from multiple computers!
 
-Coderank implements a basic web application in your repository to display data with interactive graphs and charts. Feel free to edit this and make it your own! (coming soon)
+Ensure these prerequisites are met before you make your first push:
 
-You can host your web app with [GitHub Pages](https://pages.github.com/) or other resources so anyone viewing your profile can see your typing achievements.
-
-#### Pushing to GitHub
 
 1. [Create a free GitHub account](https://github.com/).
 
-2. [Create a new repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/quickstart-for-repositories) to store your coderank data. Name it whatever you'd like!
+
+2. [Create a new repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/quickstart-for-repositories) to store your coderank data. Name it whatever you'd like! View an example repository [here](https://github.com/reidspreiter/reidspreiter-coderank).
+
 
 3. Create a GitHub Personal Access Token (PAT). View [this GitHub resource](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token), or the [Creating a PAT](#creating-a-pat) section of this document for a Coderank-specific introduction.
 
-4. Make note of the branch names in your repository. Pushing to `main` or `master` is encouraged, but Coderank allows you to push to any branch, as long as it exists.
+<br>
 
-Upon completing these steps, you are ready to push to your repository!
+### Web Viewer
 
-Press the remote repository button in the top right of the Coderank panel.
 
-![Push to Remote](./static/localToRemote.png)
+The web viewer is automatically initialized in your coderank repository on GitHub and can be hosted via [GitHub Pages](https://pages.github.com/). See the complete default viewer [here](https://reidspreiter.github.io/reidspreiter-coderank/).
 
-You will be prompted to enter your GitHub username, PAT, repository name, and branch name.
 
-Once these fields are supplied, Coderank clones your repository, adds local data, creates a `total.json` file, which contains the sum of data from each year, not including `Character Count`. Then, Coderank pushes the changes and deletes all local files and backups if successful.
+![Web Viewer](./static/webViewer.png)
 
-By default, Coderank does not save username or PAT credentials. However, storing and retrieving these via VS Code's extension secrets can be enabled with the `coderank.saveCredentials` configuration option.
+
+The default web viewer is great, but feel free to add additional charts to make it your own. If customizations are made, remember to turn off automatic web viewer updates by setting `coderank.autoUpdateWebViewer` to `false`.
+
+<br>
+
+### Machines
+
+
+Coderank tracks the specific machine that data comes from. When Coderank is initially activated, it assigns a unique ID to its host.
+
+
+![Set Machine Name Command](./static/setMachineName.png)
+
+
+By default, the host name is `unnamed`, but this can be easily changed across the local buffer and remote repository via the `coderank.setMachineName` command.
+
+
+If VS Code and all extension data is deleted and reinstalled on the same machine, a new ID is assigned to the host, resulting in two IDs for the same machine.
+
+
+![Reconfigure Machine Command](./static/reconfigureMachine.png)
+
+
+Use the `coderank.reconfigureMachine` command to resolve this issue. Both machine IDs are combined across the local buffer and remote repository. ***Be Careful*** when using this command and ensure the machine IDs you select for combination belong to the same machine. Coderank cannot revert this action.
+
+<br>
+
+### Editors
+
+
+Coderank is only operational in VS Code at this time. However, support for additional editors is extremely possible, especially if there is interest.
+
+<br>
 
 ## Settings Keys
 
+
 Coderank can be customized by updating the following settings keys in VS Code's `settings.json`.
+
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `coderank.saveCredentials` | `false` | Save GitHub username and PAT
-| `coderank.refreshRate` | `100` | Automatically refresh project data every `X` characters. Set to 0 to disable automatic refresh |
-| `coderank.trackCharacters` | `true` | Track character values and populate a `Characters Pressed` field |
-| `coderank.autoStore` | `true` | Automatically add project data to local storage on document save |
-| `coderank.loadLocalOnStart` | `true` | Load data from local storage when a new window is opened |
-| `coderank.debug` | `false` | Logs events to the console for debug and development purposes |
+| `coderank.saveCredentials` | `false` | Save GitHub username and PAT.<br><br>If this is set, pushing to remote will not prompt for login information unless an error occurs.
+| `coderank.logVerbosity` | `""` | Output log events to the console.<br><br>`""`: disables logging<br>`"v"`: only logs large pastes and cuts<br>`"vv"`: logs all text document events |
+| `coderank.pushReminderFrequency` | `"weekly"` | How often Coderank reminds you to push your data to remote on startup.<br>Options: `"daily"`, `"daily-force"`, `"weekly"`, `"weekly-force"`, or `"never"`.<br><br>An option with `-force` will avoid the reminder and automatically prompt you to login.<br><br>If `coderank.saveCredentials` is set, the push process will start automatically. |
+| `coderank.autoUpdateWebViewer` | `true` | When enabled, pending web viewer updates are applied automatically.<br><br>Disabling this is recommended if the remote repository contains custom web viewer files. |
+
+<br>
 
 ## Creating a PAT
 
+
 Personal access tokens (PATs) allow Coderank to access GitHub resources on your behalf. Moreover, PATs are secure and can limit Coderank's permissions and the repositories it can access.
 
+
 Creating a PAT is easy and shouldn't take longer than five minutes. Follow [these steps](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) from the GitHub Docs to get started.
+
 
 Regarding step 11:
 >Under **Repository access**, select which repositories you want the token to access.
 
+
 ![Repository access](./static/PATRepository.png)
 
+
 Allow your PAT to only access your Coderank repository.
+
 
 Regarding step 13:
 >Under Permissions, select which permissions to grant the token.
 
+
 ![Contents permission](./static/PATPermissions.png)
 
+
 Grant your PAT the **Repository permission** of read-and-write access to **Contents**. Your PAT will be given read-only access to **Metadata** by default.
+
 
 Once you have created your PAT, you are all set! Just make sure to save it somewhere so you have it ready to supply to Coderank when you push local fields to your repository.

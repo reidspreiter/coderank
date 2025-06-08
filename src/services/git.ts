@@ -46,7 +46,7 @@ async function getGitCredentials(
 
     const username = await window.showInputBox({
         prompt: `Enter your GitHub username.${useSavedCredentials ? " If desired, enable credential saving via `coderank.saveCredentials` for faster access." : ""}`,
-        placeHolder: "Username",
+        placeHolder: "fizzbuzz",
         value: secretsUsername ?? "",
         ignoreFocusOut: true,
     });
@@ -56,7 +56,7 @@ async function getGitCredentials(
     }
 
     const token = await window.showInputBox({
-        prompt: "Enter your GitHub PAT",
+        prompt: "Enter your GitHub PAT: https://github.com/reidspreiter/coderank?tab=readme-ov-file#creating-a-pat",
         placeHolder: "Personal access token",
         password: true,
         value: secretsToken ?? "",
@@ -69,7 +69,7 @@ async function getGitCredentials(
 
     const repo = await window.showInputBox({
         prompt: "Enter your coderank repo name",
-        placeHolder: "Repository name",
+        placeHolder: "fizzbuzz-coderank",
         value: secretsRepo ?? "",
         ignoreFocusOut: true,
     });
